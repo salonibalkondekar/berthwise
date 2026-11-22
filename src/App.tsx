@@ -1,19 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LaneMap } from './components/LaneMap';
 import { ShipmentDetail } from './components/ShipmentDetail';
+import { Accuracy } from './components/Accuracy';
 import { RiskBrief } from './components/RiskBrief';
+import { WhatIf } from './components/WhatIf';
 import { ShipmentList, type StageFilter } from './components/ShipmentList';
 import { SignalsPanel } from './components/SignalsPanel';
 import { LiveTag, SimTag, timeAgo } from './components/ui';
 import { DESTINATION, ORIGIN, WAYPOINTS } from './lib/lane';
 import { generateShipments, IMPORTER, LANE_NM } from './lib/sim';
 import { predict, rankByRisk, type Prediction } from './lib/predict';
+import { applyScenario, scenarioRange, type Scenario } from './lib/scenario';
 import { fmt, type PortSignal, type Signals, type WeatherPoint } from './lib/signals';
 
 const SESSION_URL = 'https://app.devin.ai/sessions/a3eb9ff2b29a4b0e900ee8b290350bc3';
 const INTRO_KEY = 'berthwise:intro-dismissed';
 
-type Tab = 'today' | 'shipments' | 'signals';
+type Tab = 'today' | 'shipments' | 'whatif' | 'accuracy' | 'signals';
 
 export default function App() {
   const shipments = useMemo(() => generateShipments(), []);
@@ -35,6 +38,11 @@ export default function App() {
     return m;
   }, [shipments, signals, signalsSettled]);
   const ranked = useMemo(() => (preds.size ? rankByRisk(shipments, preds) : []), [shipments, preds]);
+  const [scenario, setScenario] = useState<Scenario>({ kind: 'storm', zone: 'nwp', startIn: 1, days: 3, strength: 'extreme' });
+  const mapPreds = useMemo(
+    () => (tab === 'whatif' && preds.size ? applyScenario(shipments, preds, scenario).after : preds),
+    [tab, preds, shipments, scenario],
+  );
   const likelyLate = ranked.filter((s) => preds.get(s.id)?.level === 'high').length;
   const atRisk = ranked.filter((s) => preds.get(s.id)?.level === 'medium').length;
 
@@ -118,7 +126,7 @@ export default function App() {
             <h1>Which containers will be late, and why</h1>
             <p>
               Berthwise follows {shipments.length} containers for {IMPORTER.name}, a made-up importer, from {ORIGIN.short} to {DESTINATION.short}.
-              Each morning it ranks them by how likely they are to miss their needed-by date, says why, and flags stock-out risks and late fees, and suggests what to do: a faster option, a pickup to book, or a note to your customer. Pick a ship to see its estimate and the reasons behind it.
+              Each morning it ranks them by how likely they are to miss their needed-by date, says why, and flags stock-out risks and late fees, and suggests what to do: a faster option, a pickup to book, or a note to your customer. Try storms and port strikes under What-if, and see how accurate past estimates were under Accuracy. Pick a ship to see its estimate and the reasons behind it.
             </p>
             <div className="intro-key">
               <span><SimTag /> Shipments, vessels and the importer are invented.</span>
@@ -175,7 +183,7 @@ export default function App() {
 
       <main className="main">
         <div className="map-wrap">
-          <LaneMap shipments={shipments} weather={signals?.weather ?? null} preds={preds} selectedId={selectedId} onSelect={select} resetKey={resetKey} />
+          <LaneMap shipments={shipments} weather={signals?.weather ?? null} preds={mapPreds} selectedId={selectedId} onSelect={select} resetKey={resetKey} highlight={tab === 'whatif' ? scenarioRange(scenario) : null} />
           <button className="map-reset" onClick={() => setResetKey((k) => k + 1)}>Show whole lane</button>
           <details className="legend" open>
             <summary>Map key</summary>
@@ -204,8 +212,14 @@ export default function App() {
             <button role="tab" aria-selected={tab === 'shipments'} onClick={() => setTab('shipments')}>
               Shipments <span className="count">{shipments.length}</span>
             </button>
+            <button role="tab" aria-selected={tab === 'whatif'} onClick={() => { setSelectedId(null); setTab('whatif'); }}>
+              What-if
+            </button>
+            <button role="tab" aria-selected={tab === 'accuracy'} onClick={() => { setSelectedId(null); setTab('accuracy'); }}>
+              Accuracy
+            </button>
             <button role="tab" aria-selected={tab === 'signals'} onClick={() => setTab('signals')}>
-              Weather & ports
+              Signals
             </button>
           </div>
 
@@ -234,6 +248,8 @@ export default function App() {
               position={`${idx + 1} of ${shipments.length}`}
             />
           )}
+          {tab === 'whatif' && <WhatIf shipments={shipments} preds={preds} scenario={scenario} onChange={setScenario} onSelect={select} />}
+          {tab === 'accuracy' && <Accuracy />}
           {tab === 'signals' && <SignalsPanel signals={signals} error={loadError} refreshing={refreshing} onRefresh={() => load(true)} />}
         </aside>
       </main>
@@ -244,7 +260,7 @@ export default function App() {
           <a href="https://portwatch.imf.org/" target="_blank" rel="noreferrer">IMF PortWatch</a> · Map © Esri · Shipments are simulated
         </span>
         <span>
-          Milestone 3 of 4 · <a href={SESSION_URL} target="_blank" rel="noreferrer">Request changes</a>
+          Milestone 4 of 4 · <a href={SESSION_URL} target="_blank" rel="noreferrer">Request changes</a>
         </span>
       </footer>
     </div>

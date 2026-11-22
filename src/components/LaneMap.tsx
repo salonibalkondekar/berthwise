@@ -29,6 +29,7 @@ interface Props {
   selectedId: string | null;
   onSelect: (id: string) => void;
   resetKey: number;
+  highlight?: [number, number] | null;
 }
 
 function ViewController({ target, resetKey }: { target: LatLon | null; resetKey: number }) {
@@ -42,7 +43,7 @@ function ViewController({ target, resetKey }: { target: LatLon | null; resetKey:
   return null;
 }
 
-export function LaneMap({ shipments, weather, preds, selectedId, onSelect, resetKey }: Props) {
+export function LaneMap({ shipments, weather, preds, selectedId, onSelect, resetKey, highlight }: Props) {
   // Ships sitting at the same port are fanned out slightly so each pin stays clickable.
   const stacks = new Map<string, number>();
   const placed = shipments.map((s) => {
@@ -66,6 +67,14 @@ export function LaneMap({ shipments, weather, preds, selectedId, onSelect, reset
         maxNativeZoom={10}
       />
       <Polyline positions={LANE} pathOptions={{ color: 'var(--lane)', weight: 3, dashArray: '6 6' }} />
+      {highlight && (
+        <Polyline
+          positions={LANE.slice(Math.floor(highlight[0] * (LANE.length - 1)), Math.ceil(highlight[1] * (LANE.length - 1)) + 1)}
+          pathOptions={{ color: '#dc2626', weight: 22, opacity: 0.3, lineCap: 'round' }}
+        >
+          <Tooltip sticky>What-if disruption area</Tooltip>
+        </Polyline>
+      )}
 
       {WAYPOINTS.map((wp, i) => {
         const w = weather?.[i];
