@@ -880,3 +880,9 @@ kbd { font: 600 11px/1.4 var(--mono); padding: 1px 6px; border: 1px solid var(--
   .timeline-h { grid-template-columns: repeat(3, 1fr); row-gap: 14px; }
   .timeline-h li::before { display: none; }
 }
+
+/* Overlap map tiles by 1px so sub-pixel gaps between rows don't show as lines */
+.leaflet-container { background: #a9c9e8; }
+:root[data-theme='dark'] .leaflet-container { background: #2b3d52; }
+/* Leaflet's plus-lighter blend brightens the 1px row where tiles meet at sub-pixel offsets */
+.leaflet-container .leaflet-tile-container img.leaflet-tile { mix-blend-mode: normal; width: 257px !important; height: 257px !important; }
