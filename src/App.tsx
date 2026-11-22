@@ -157,7 +157,7 @@ export default function App() {
             <h1>Which containers will be late, and why</h1>
             <p>
               Berthwise follows {shipments.length} containers for {IMPORTER.name}, a made-up importer, from {ORIGIN.short} to {DESTINATION.short}.
-              Each morning it ranks them by how likely they are to miss their needed-by date, says why, and flags stock-out risks and late fees, and suggests what to do: a faster option, a pickup to book, or a note to your customer. The SAP tab shows the purchase orders, plant stock and customer sales orders behind each container, and Planning shows what delays cost, when to reorder and which carriers keep their dates. Try storms and port strikes under What-if, and see how accurate past estimates were under Accuracy. Pick a ship to see its estimate and the reasons behind it.
+              Each morning it ranks them by how likely they are to miss their needed-by date, says why, and flags stock-out risks and late fees, and suggests what to do: a faster option, a pickup to book, or a note to your customer. The SAP tab shows the purchase orders, plant stock and customer sales orders behind each container, and Planning shows what delays cost, when to reorder and which carriers keep their dates. Try storms and port strikes under What-if, and see how accurate past estimates were under Accuracy. Import · Export loads your own shipments from a CSV, sends results to SAP or Excel, and builds the morning email digest. Pick a ship to see its estimate and the reasons behind it.
             </p>
             <div className="intro-key">
               <span><SimTag /> Shipments, vessels and the importer are invented.</span>
