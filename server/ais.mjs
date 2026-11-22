@@ -47,7 +47,7 @@ function parseEta(e, now = new Date()) {
 
 function vessel(mmsi) {
   let v = vessels.get(mmsi);
-  if (!v) vessels.set(mmsi, (v = { mmsi, name: null, type: null, destination: null, eta: null, lat: null, lon: null, sog: null, cog: null, lastSeen: 0, zone: null, estimate: null, lastArrivalAt: 0 }));
+  if (!v) vessels.set(mmsi, (v = { mmsi, name: null, type: null, destination: null, eta: null, lat: null, lon: null, sog: null, cog: null, lastSeen: 0, zone: null, estimate: null, lastArrivalAt: 0, seenOutsidePort: false }));
   return v;
 }
 
@@ -55,7 +55,9 @@ function onPosition(mmsi, name, lat, lon, sog, cog, now) {
   if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return;
   const v = vessel(mmsi);
   if (name && !v.name) v.name = name.trim() || null;
-  Object.assign(v, { lat, lon, sog: sog > 102 ? null : sog, cog: cog >= 360 ? null : cog, lastSeen: now, zone: zoneOf(lat, lon) });
+  const zone = zoneOf(lat, lon);
+  if (zone !== 'la_port') v.seenOutsidePort = true;
+  Object.assign(v, { lat, lon, sog: sog > 102 ? null : sog, cog: cog >= 360 ? null : cog, lastSeen: now, zone });
   const cargo = v.type != null && v.type >= 70 && v.type <= 79;
   if (!cargo) return;
 
@@ -66,7 +68,9 @@ function onPosition(mmsi, name, lat, lon, sog, cog, now) {
     v.estimate = { madeAt: now, eta: now + (dist / v.sog) * 3600_000, distanceNm: Math.round(dist), declaredEta: v.eta };
   }
 
-  if (v.zone === 'la_port' && v.sog != null && v.sog < 1 && now - v.lastArrivalAt > 24 * 3600_000) {
+  // Only ships seen outside the port first count: one already moored when the feed started is not an arrival.
+  if (v.zone === 'la_port' && v.seenOutsidePort && v.sog != null && v.sog < 1 && now - v.lastArrivalAt > 24 * 3600_000) {
+    v.seenOutsidePort = false;
     v.lastArrivalAt = now;
     arrivals.push({
       mmsi, name: v.name, arrivedAt: now,

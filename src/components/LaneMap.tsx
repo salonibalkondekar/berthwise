@@ -121,7 +121,7 @@ export function LaneMap({ shipments, weather, preds, selectedId, onSelect, reset
         </Marker>
       ))}
       {vessels?.map((v) => (
-        <CircleMarker key={v.mmsi} center={[v.lat, v.lon < 0 ? v.lon + 360 : v.lon]} radius={3.5} pathOptions={{ className: 'ais', weight: 1 }}>
+        <CircleMarker key={v.mmsi} center={[v.lat, v.lon < 0 ? v.lon + 360 : v.lon]} radius={3.5} className="ais" pathOptions={{ weight: 1 }}>
           <Tooltip>
             <strong>LIVE AIS</strong> · {v.name ?? `MMSI ${v.mmsi}`} · {v.sog != null ? `${v.sog.toFixed(1)} kn` : 'speed n/a'}
             {v.destination ? ` · to ${v.destination}` : ''}

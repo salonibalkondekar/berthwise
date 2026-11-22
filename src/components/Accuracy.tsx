@@ -18,11 +18,12 @@ export function Accuracy({ ais }: { ais: AisSnapshot | null }) {
       <div className="brief-head">
         <h2>How accurate are the estimates?</h2>
         <div className="muted small">
-          Predicted vs actual arrival for {s.n} past voyages, with each estimate made 7 days before arrival. <SimTag />
+          Graded against real ship arrivals as they happen, plus a backtest on simulated voyages.
         </div>
       </div>
       <RealArrivals ais={ais} />
       <h3 className="section-title">Simulated backtest <SimTag /></h3>
+      <div className="muted small">Predicted vs actual arrival for {s.n} past voyages, each estimate made 7 days before arrival.</div>
       <div className="callout small">
         A few days of real arrivals is too few to judge the method, so this backtest also runs it on 48 <strong>simulated</strong> voyages, each with a hidden true delay. The model sees noisy versions of the same weather, port and carrier signals.
       </div>
