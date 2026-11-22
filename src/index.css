@@ -886,3 +886,15 @@ kbd { font: 600 11px/1.4 var(--mono); padding: 1px 6px; border: 1px solid var(--
 :root[data-theme='dark'] .leaflet-container { background: #2b3d52; }
 /* Leaflet's plus-lighter blend brightens the 1px row where tiles meet at sub-pixel offsets */
 .leaflet-container .leaflet-tile-container img.leaflet-tile { mix-blend-mode: normal; width: 257px !important; height: 257px !important; }
+
+/* Live AIS ships */
+.leaflet-interactive.ais { fill: #0f172a; fill-opacity: 0.7; stroke: #fff; }
+:root[data-theme='dark'] .leaflet-interactive.ais { fill: #e2e8f0; stroke: #0f172a; }
+.real-acc { display: grid; gap: 10px; margin-bottom: 18px; }
+.acc-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.real-table { width: 100%; border-collapse: collapse; }
+.real-table th, .real-table td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border); }
+.real-table th { color: var(--text-muted); font-weight: 600; }
+@media (max-width: 760px) { .acc-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.dot.ais-dot { background: #0f172a; border: 1px solid #fff; }
+:root[data-theme='dark'] .dot.ais-dot { background: #e2e8f0; border-color: #0f172a; }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CommandPalette, NavIcon, type PageItem } from './components/CommandPalette';
 import { LaneMap } from './components/LaneMap';
+import { useAis } from './lib/ais';
 import { CaseFile } from './components/CaseFile';
 import { Accuracy } from './components/Accuracy';
 import { RiskBrief } from './components/RiskBrief';
@@ -99,6 +100,7 @@ export default function App() {
   const likelyLate = ranked.filter((s) => preds.get(s.id)?.level === 'high').length;
   const atRisk = ranked.filter((s) => preds.get(s.id)?.level === 'medium').length;
 
+  const ais = useAis();
   const load = useCallback((refresh = false) => {
     setLoadError(null);
     setRefreshing(true);
@@ -290,6 +292,7 @@ export default function App() {
 
       {caseOpen && selected ? (
         <CaseFile
+          vessels={ais?.vessels ?? null}
           s={selected}
           shipments={shipments}
           preds={preds}
@@ -306,7 +309,7 @@ export default function App() {
       ) : (
       <main className={`main ${mapTab ? '' : 'main-wide'}`}>
         {mapTab && (<div className="map-wrap">
-          <LaneMap shipments={shipments} weather={signals?.weather ?? null} preds={mapPreds} selectedId={selectedId} onSelect={select} resetKey={resetKey} highlight={tab === 'whatif' ? scenarioRange(scenario) : null} />
+          <LaneMap shipments={shipments} weather={signals?.weather ?? null} preds={mapPreds} selectedId={selectedId} onSelect={select} resetKey={resetKey} highlight={tab === 'whatif' ? scenarioRange(scenario) : null} vessels={ais?.vessels ?? null} />
           <button className="map-reset" onClick={() => setResetKey((k) => k + 1)}>Show whole lane</button>
           <details className="legend" open>
             <summary>Map key</summary>
@@ -324,6 +327,12 @@ export default function App() {
               <div><span className="pin-mini pin-risk-medium">SIM</span> At risk</div>
               <div><span className="pin-mini">SIM</span> On track</div>
             </div>
+            {!!ais?.vessels.length && (
+              <div className="legend-group">
+                <div className="legend-title">Real ships <LiveTag /></div>
+                <div><span className="dot ais-dot" /> Cargo ship on AIS · {ais.vessels.length}</div>
+              </div>
+            )}
           </details>
         </div>)}
 
@@ -346,7 +355,7 @@ export default function App() {
           {tab === 'sap' && (erp ? <SapView links={erp} onSelect={select} /> : <div className="brief"><div className="skeleton" style={{ height: 160 }} /></div>)}
           {tab === 'plan' && (costs ? <PlanView shipments={shipments} costs={costs} reorder={reorder} carriers={carriers} onSelect={select} /> : <div className="brief"><div className="skeleton" style={{ height: 160 }} /></div>)}
           {tab === 'whatif' && <WhatIf shipments={shipments} preds={preds} scenario={scenario} onChange={setScenario} onSelect={select} />}
-          {tab === 'accuracy' && <Accuracy />}
+          {tab === 'accuracy' && <Accuracy ais={ais} />}
           {tab === 'data' && (erp && costs ? (
             <DataView
               shipments={shipments}

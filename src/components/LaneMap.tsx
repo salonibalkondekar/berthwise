@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import type { AisVessel } from '../lib/ais';
 import { MapContainer, TileLayer, Polyline, CircleMarker, Tooltip, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -30,6 +31,7 @@ interface Props {
   onSelect: (id: string) => void;
   resetKey: number;
   highlight?: [number, number] | null;
+  vessels?: AisVessel[] | null;
 }
 
 function ViewController({ target, resetKey }: { target: LatLon | null; resetKey: number }) {
@@ -43,7 +45,7 @@ function ViewController({ target, resetKey }: { target: LatLon | null; resetKey:
   return null;
 }
 
-export function LaneMap({ shipments, weather, preds, selectedId, onSelect, resetKey, highlight }: Props) {
+export function LaneMap({ shipments, weather, preds, selectedId, onSelect, resetKey, highlight, vessels }: Props) {
   // Ships sitting at the same port are fanned out slightly so each pin stays clickable.
   const stacks = new Map<string, number>();
   const placed = shipments.map((s) => {
@@ -117,6 +119,14 @@ export function LaneMap({ shipments, weather, preds, selectedId, onSelect, reset
             {preds.get(s.id) && preds.get(s.id)!.level !== 'arrived' && <div>{RISK_LABEL[preds.get(s.id)!.level]}</div>}
           </Tooltip>
         </Marker>
+      ))}
+      {vessels?.map((v) => (
+        <CircleMarker key={v.mmsi} center={[v.lat, v.lon < 0 ? v.lon + 360 : v.lon]} radius={3.5} className="ais" pathOptions={{ weight: 1 }}>
+          <Tooltip>
+            <strong>LIVE AIS</strong> · {v.name ?? `MMSI ${v.mmsi}`} · {v.sog != null ? `${v.sog.toFixed(1)} kn` : 'speed n/a'}
+            {v.destination ? ` · to ${v.destination}` : ''}
+          </Tooltip>
+        </CircleMarker>
       ))}
     </MapContainer>
   );
