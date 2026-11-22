@@ -170,7 +170,7 @@ export function RiskBrief({ erp, costs, ranked, all, signals, preds, loading, li
 
 const ORDER: Record<Recommendation['kind'], number> = { pickup: 0, reroute: 1, notify: 2, none: 3 };
 
-function todoList(all: Shipment[], preds: Map<string, Prediction>, signals: Signals | null, costs: Map<string, DelayCost> | null) {
+export function todoList(all: Shipment[], preds: Map<string, Prediction>, signals: Signals | null, costs: Map<string, DelayCost> | null) {
   return all
     .map((s) => {
       const p = preds.get(s.id) ?? null;
