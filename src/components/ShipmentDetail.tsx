@@ -3,6 +3,8 @@ import { STAGE_LABEL, type Shipment, type Stage } from '../lib/sim';
 import { fmt, seaSeverity, type Signals } from '../lib/signals';
 import type { Prediction } from '../lib/predict';
 import { ActionsPanel } from './ActionsPanel';
+import { SapCard } from './SapView';
+import type { ErpLink } from '../lib/erp';
 import { pct, RiskChip } from './RiskBrief';
 import { d, daysBetween, daysFromToday, LiveTag, relDays, SEA_SENTENCE, SeverityChip, SimTag, usd, weatherFor, weekday } from './ui';
 
@@ -18,13 +20,14 @@ interface Props {
   s: Shipment;
   signals: Signals | null;
   pred: Prediction | null;
+  erp: ErpLink | null;
   onBack: () => void;
   onPrev: () => void;
   onNext: () => void;
   position: string;
 }
 
-export function ShipmentDetail({ s, signals, pred, onBack, onPrev, onNext, position }: Props) {
+export function ShipmentDetail({ s, signals, pred, erp, onBack, onPrev, onNext, position }: Props) {
   const wx = weatherFor(s, signals?.weather ?? null);
   const atSea = s.stage === 'sailing';
   const outlook = wx?.point.forecast.slice(0, 5) ?? [];
@@ -112,6 +115,8 @@ export function ShipmentDetail({ s, signals, pred, onBack, onPrev, onNext, posit
         </div>
       )}
 
+      {erp && <SapCard link={erp} />}
+
       <ActionsPanel s={s} pred={pred} signals={signals} />
 
       {freeLeft != null && (
@@ -130,7 +135,7 @@ export function ShipmentDetail({ s, signals, pred, onBack, onPrev, onNext, posit
         <dd className="mono">{s.voyage}</dd>
         <dt>Carrier</dt>
         <dd>{s.carrier}</dd>
-        <dt>Order</dt>
+        <dt>PO</dt>
         <dd className="mono">{s.po} · {s.id}</dd>
       </dl>
 
