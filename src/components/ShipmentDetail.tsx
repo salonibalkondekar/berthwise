@@ -2,6 +2,7 @@ import { DESTINATION, ORIGIN } from '../lib/lane';
 import { STAGE_LABEL, type Shipment, type Stage } from '../lib/sim';
 import { fmt, seaSeverity, type Signals } from '../lib/signals';
 import type { Prediction } from '../lib/predict';
+import { ActionsPanel } from './ActionsPanel';
 import { pct, RiskChip } from './RiskBrief';
 import { d, daysBetween, daysFromToday, LiveTag, relDays, SEA_SENTENCE, SeverityChip, SimTag, usd, weatherFor, weekday } from './ui';
 
@@ -111,6 +112,8 @@ export function ShipmentDetail({ s, signals, pred, onBack, onPrev, onNext, posit
         </div>
       )}
 
+      <ActionsPanel s={s} pred={pred} signals={signals} />
+
       {freeLeft != null && (
         <div className={`buffer ${freeLeft <= 0 ? 'late' : freeLeft <= 1 ? 'tight' : 'ok'}`}>
           At the terminal since {d(s.dischargedAt)}.{' '}
@@ -184,7 +187,7 @@ export function ShipmentDetail({ s, signals, pred, onBack, onPrev, onNext, posit
       )}
 
       <div className="next-up">
-        <strong>Coming in milestone 3:</strong> recommended actions, late-fee warnings, reroute comparisons and a drafted delay note for your customer.
+        <strong>Coming in milestone 4:</strong> what-if scenarios for storms and port strikes, and a score of how accurate past estimates were.
       </div>
     </div>
   );
