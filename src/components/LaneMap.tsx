@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AisVessel } from '../lib/ais';
-import { MapContainer, TileLayer, Polyline, CircleMarker, Tooltip, Marker, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Polyline, CircleMarker, Tooltip, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { greatCirclePath, type LatLon } from '../lib/geo';
@@ -120,14 +120,87 @@ export function LaneMap({ shipments, weather, preds, selectedId, onSelect, reset
           </Tooltip>
         </Marker>
       ))}
-      {vessels?.map((v) => (
-        <CircleMarker key={v.mmsi} center={[v.lat, v.lon < 0 ? v.lon + 360 : v.lon]} radius={3.5} className="ais" pathOptions={{ weight: 1 }}>
-          <Tooltip>
-            <strong>LIVE AIS</strong> · {v.name ?? `MMSI ${v.mmsi}`} · {v.sog != null ? `${v.sog.toFixed(1)} kn` : 'speed n/a'}
-            {v.destination ? ` · to ${v.destination}` : ''}
-          </Tooltip>
-        </CircleMarker>
-      ))}
+      {!!vessels?.length && <AisLayer vessels={vessels} />}
     </MapContainer>
+  );
+}
+
+const aisPos = (v: AisVessel): LatLon => [v.lat, v.lon < 0 ? v.lon + 360 : v.lon];
+
+const aisShipIcon = (cog: number | null) =>
+  L.divIcon({
+    className: '',
+    html: `<div class="ais-ship" style="transform: rotate(${cog ?? 0}deg)"><svg viewBox="0 0 20 20" width="20" height="20"><path d="M10 1 L17 18 L10 14 L3 18 Z"/></svg></div>`,
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+  });
+
+const aisClusterIcon = (n: number) => {
+  const size = n >= 20 ? 40 : n >= 5 ? 34 : 28;
+  return L.divIcon({
+    className: '',
+    html: `<div class="ais-cluster" style="width:${size}px;height:${size}px">${n}</div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
+};
+
+/** Live AIS ships: ships within ~44 px of each other merge into one numbered bubble that splits as you zoom in. */
+function AisLayer({ vessels }: { vessels: AisVessel[] }) {
+  const map = useMap();
+  const [zoom, setZoom] = useState(map.getZoom());
+  useMapEvents({ zoomend: () => setZoom(map.getZoom()) });
+  const btn = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (btn.current) L.DomEvent.disableClickPropagation(btn.current);
+  }, []);
+
+  const groups = useMemo(() => {
+    const cells = new Map<string, AisVessel[]>();
+    for (const v of vessels) {
+      const pt = map.project(aisPos(v), zoom);
+      const key = `${Math.floor(pt.x / 44)}:${Math.floor(pt.y / 44)}`;
+      cells.set(key, [...(cells.get(key) ?? []), v]);
+    }
+    return [...cells.values()];
+  }, [vessels, zoom, map]);
+
+  const fitAll = () => map.flyToBounds(L.latLngBounds(vessels.map(aisPos)), { padding: [40, 40], maxZoom: 6 });
+
+  return (
+    <>
+      <button ref={btn} className="map-ais-btn" onClick={fitAll}>
+        <span className="ais-swatch" /> Live ships · {vessels.length}
+      </button>
+      {groups.map((g) => {
+        if (g.length === 1) {
+          const v = g[0];
+          return (
+            <Marker key={v.mmsi} position={aisPos(v)} icon={aisShipIcon(v.cog)} zIndexOffset={-100}>
+              <Tooltip>
+                <strong>LIVE AIS</strong> · {v.name ?? `MMSI ${v.mmsi}`} · {v.sog != null ? `${v.sog.toFixed(1)} kn` : 'speed n/a'}
+                {v.destination ? ` · to ${v.destination}` : ''}
+              </Tooltip>
+            </Marker>
+          );
+        }
+        const lat = g.reduce((a, v) => a + aisPos(v)[0], 0) / g.length;
+        const lon = g.reduce((a, v) => a + aisPos(v)[1], 0) / g.length;
+        const names = g.map((v) => v.name).filter(Boolean).slice(0, 3).join(', ');
+        return (
+          <Marker
+            key={g.map((v) => v.mmsi).join('-')}
+            position={[lat, lon]}
+            icon={aisClusterIcon(g.length)}
+            zIndexOffset={-100}
+            eventHandlers={{ click: () => map.flyToBounds(L.latLngBounds(g.map(aisPos)).pad(0.3), { maxZoom: 11 }) }}
+          >
+            <Tooltip>
+              <strong>LIVE AIS</strong> · {g.length} cargo ships{names ? ` · ${names}${g.length > 3 ? '…' : ''}` : ''} · click to zoom in
+            </Tooltip>
+          </Marker>
+        );
+      })}
+    </>
   );
 }
