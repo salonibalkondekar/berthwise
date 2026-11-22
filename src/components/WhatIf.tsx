@@ -4,6 +4,27 @@ import type { Shipment } from '../lib/sim';
 import { pct, RiskChip } from './RiskBrief';
 import { d, SimTag, usd } from './ui';
 
+const svg = (d: string) => (
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d={d} />
+  </svg>
+);
+const ICONS = {
+  storm: svg('M21 12a9 9 0 1 1-6.2-8.6M17 12a5 5 0 1 1-3.5-4.8M12 12h.01'),
+  wave: svg('M2 12c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2 2-2 4-2M2 18c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2 2-2 4-2M2 6c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2 2-2 4-2'),
+  anchor: svg('M12 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 8v14M5 12H2a10 10 0 0 0 20 0h-3'),
+  crane: svg('M4 22V4h12l4 6M4 4l8 6H4M14 10v5M12 15h4v3h-4zM2 22h20'),
+};
+
+const PRESETS: { label: string; sub: string; icon: keyof typeof ICONS; sc: Scenario }[] = [
+  { label: 'Typhoon off Japan', sub: 'In 2 days, for 3', icon: 'storm', sc: { kind: 'storm', zone: 'japan', startIn: 2, days: 3, strength: 'extreme' } },
+  { label: 'Mid-Pacific storm', sub: 'Tomorrow, for 3 days', icon: 'wave', sc: { kind: 'storm', zone: 'nwp', startIn: 1, days: 3, strength: 'extreme' } },
+  { label: 'LA–Long Beach strike', sub: 'In 2 days, for a week', icon: 'anchor', sc: { kind: 'strike', port: 'destination', startIn: 2, days: 7 } },
+  { label: 'Shanghai strike', sub: 'In 3 days, for 5', icon: 'crane', sc: { kind: 'strike', port: 'origin', startIn: 3, days: 5 } },
+];
+
+const same = (a: Scenario, b: Scenario) => JSON.stringify(a) === JSON.stringify(b);
+
 interface Props {
   shipments: Shipment[];
   preds: Map<string, Prediction>;
@@ -34,6 +55,19 @@ export function WhatIf({ shipments, preds, scenario: sc, onChange, onSelect }: P
         <div className="muted small">Try a disruption and see which containers it would hit. Nothing here changes today’s estimates. <SimTag /></div>
       </div>
 
+      <div className="presets" role="group" aria-label="Quick scenarios">
+        {PRESETS.map((p) => (
+          <button key={p.label} className={`preset ${same(p.sc, sc) ? 'active' : ''}`} onClick={() => onChange(p.sc)}>
+            <span className={`preset-icon ${p.sc.kind}`} aria-hidden>{ICONS[p.icon]}</span>
+            <span>
+              <span className="preset-title">{p.label}</span>
+              <span className="preset-sub">{p.sub}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+      <details className="custom">
+        <summary>Fine-tune this scenario</summary>
       <div className="seg seg-wide" role="group" aria-label="Disruption type">
         <button className={`seg-btn ${sc.kind === 'storm' ? 'active' : ''}`} onClick={() => onChange({ kind: 'storm', zone: 'nwp', startIn: 1, days: 3, strength: 'extreme' })}>Storm</button>
         <button className={`seg-btn ${sc.kind === 'strike' ? 'active' : ''}`} onClick={() => onChange({ kind: 'strike', port: 'destination', startIn: 2, days: 5 })}>Port strike</button>
@@ -76,6 +110,8 @@ export function WhatIf({ shipments, preds, scenario: sc, onChange, onSelect }: P
           <input type="range" min={1} max={sc.kind === 'storm' ? 6 : 14} value={sc.days} onChange={(e) => set({ days: +e.target.value })} />
         </label>
       </div>
+
+      </details>
 
       <div className={`whatif-summary ${res.newlyLate.length ? 'bad' : res.impacts.length ? 'warn' : 'ok'}`}>
         <div className="small muted">{label}, {when}</div>
