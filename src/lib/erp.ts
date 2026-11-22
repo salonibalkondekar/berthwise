@@ -35,10 +35,10 @@ export const SOLD_TO = [
 ];
 
 /** Gross margin markup from landed cost to the sales price. */
-const MARKUP = 2.2;
-/** A container holds about four weeks of a material's demand at its plants. */
-const WEEKS_PER_CONTAINER = 4;
-const SAFETY_DAYS = 5;
+export const MARKUP = 2.2;
+/** A container holds about six weeks of a material's demand at its plants. */
+const WEEKS_PER_CONTAINER = 6;
+export const SAFETY_DAYS = 5;
 
 export interface PoItem {
   po: string;
