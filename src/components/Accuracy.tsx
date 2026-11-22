@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
 import { backtest, score } from '../lib/accuracy';
-import { d, SimTag } from './ui';
+import { errorHours, realScore, type AisArrival, type AisSnapshot } from '../lib/ais';
+import { d, LiveTag, SimTag } from './ui';
 
-export function Accuracy() {
+export function Accuracy({ ais }: { ais: AisSnapshot | null }) {
   const v = useMemo(() => backtest(), []);
   const s = useMemo(() => score(v), [v]);
   const recent = v.slice(-24);
@@ -20,9 +21,10 @@ export function Accuracy() {
           Predicted vs actual arrival for {s.n} past voyages, with each estimate made 7 days before arrival. <SimTag />
         </div>
       </div>
+      <RealArrivals ais={ais} />
+      <h3 className="section-title">Simulated backtest <SimTag /></h3>
       <div className="callout small">
-        Berthwise hasn’t run long enough to have real arrivals, so this is a <strong>simulated backtest</strong>. Its voyages have a hidden true delay, and the model sees
-        noisy versions of the same weather, port and carrier signals. The score shows how the method works, not how it performs in the real world.
+        A few days of real arrivals is too few to judge the method, so this backtest also runs it on 48 <strong>simulated</strong> voyages, each with a hidden true delay. The model sees noisy versions of the same weather, port and carrier signals.
       </div>
 
       <div className="acc-grid">
@@ -86,5 +88,67 @@ export function Accuracy() {
       </table>
       <p className="muted small method">“Typical error” is the average number of days between the estimate and the actual arrival, early or late.</p>
     </div>
+  );
+}
+
+const when = (t: number) => new Date(t).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+const span = (h: number | null) => (h == null ? '—' : Math.abs(h) < 48 ? `${Math.abs(h).toFixed(1)} h` : `${(Math.abs(h) / 24).toFixed(1)} d`);
+const signed = (h: number | null) => (h == null ? '—' : Math.abs(h) < 0.05 ? 'on time' : `${span(h)} ${h > 0 ? 'late' : 'early'}`);
+
+function RealArrivals({ ais }: { ais: AisSnapshot | null }) {
+  if (!ais) return <div className="callout small">Loading live ship data…</div>;
+  if (!ais.status.configured) return <div className="callout small">Live ship tracking is off: the server has no AISStream key.</div>;
+  const s = realScore(ais.arrivals);
+  const c = ais.counts;
+  const recent: AisArrival[] = ais.arrivals.slice(-8).reverse();
+  return (
+    <section className="real-acc">
+      <h3 className="section-title">Real arrivals at Los Angeles–Long Beach <LiveTag /></h3>
+      <div className="muted small">
+        From AISStream ship positions{ais.status.since ? ` since ${when(ais.status.since)}` : ''}. A cargo ship counts as arrived once it is inside the port below 1 knot.
+        {!ais.status.connected && ' Reconnecting to the feed…'}
+      </div>
+      <div className="acc-grid acc-grid-4">
+        <div className="acc-card">
+          <div className="muted small">Cargo ships on the lane now</div>
+          <div className="acc-big">{c.cargoShips}</div>
+          <div className="small">{c.laAnchorage} at anchorage · {c.laPort} in port</div>
+        </div>
+        <div className="acc-card">
+          <div className="muted small">Arrivals logged</div>
+          <div className="acc-big">{s.n}</div>
+          <div className="small">{c.trackedToLa} more heading in</div>
+        </div>
+        <div className="acc-card good">
+          <div className="muted small">Berthwise typical error</div>
+          <div className="acc-big">{s.berthwiseMaeH == null ? '—' : `±${span(s.berthwiseMaeH)}`}</div>
+          <div className="small">{s.graded} graded arrival{s.graded === 1 ? '' : 's'}</div>
+        </div>
+        <div className="acc-card">
+          <div className="muted small">Ship-declared ETA typical error</div>
+          <div className="acc-big">{s.declaredMaeH == null ? '—' : `±${span(s.declaredMaeH)}`}</div>
+          <div className="small">{s.declaredN} graded</div>
+        </div>
+      </div>
+      {s.n === 0 ? (
+        <p className="small muted">No arrivals logged yet. The score fills in as ships berth, while the server keeps listening.</p>
+      ) : (
+        <table className="real-table small">
+          <thead>
+            <tr><th>Ship</th><th>Arrived</th><th>vs Berthwise</th><th>vs declared ETA</th></tr>
+          </thead>
+          <tbody>
+            {recent.map((a) => (
+              <tr key={`${a.mmsi}-${a.arrivedAt}`}>
+                <td>{a.name ?? `MMSI ${a.mmsi}`}</td>
+                <td>{when(a.arrivedAt)}</td>
+                <td title={a.estimateMadeAt ? `Estimated ${span((a.arrivedAt - a.estimateMadeAt) / 3_600_000)} ahead, ${a.estimateDistanceNm} nm out` : 'Not seen before it arrived'}>{signed(errorHours(a, a.berthwiseEta))}</td>
+                <td>{signed(errorHours(a, a.declaredEta))}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </section>
   );
 }

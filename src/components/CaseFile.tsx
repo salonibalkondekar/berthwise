@@ -5,6 +5,7 @@ import { fmt, seaSeverity, type Signals } from '../lib/signals';
 import type { Prediction } from '../lib/predict';
 import type { ErpLink } from '../lib/erp';
 import type { DelayCost } from '../lib/money';
+import type { AisVessel } from '../lib/ais';
 import { ActionsPanel, RecommendationBox, useActions } from './ActionsPanel';
 import { LaneMap } from './LaneMap';
 import { SapCard } from './SapView';
@@ -25,6 +26,7 @@ interface Props {
   onBack: () => void;
   onPrev: () => void;
   onNext: () => void;
+  vessels: AisVessel[] | null;
 }
 
 type CaseTab = 'why' | 'route' | 'timeline' | 'sap' | 'options' | 'details';
@@ -43,7 +45,7 @@ function Icon({ d: path }: { d: string }) {
 }
 const SHIP = 'M3 12.5h14l-2 4H5l-2-4zM5 12.5V8h10v4.5M8 8V5h4v3';
 
-export function CaseFile({ s, shipments, preds, signals, erp, cost, resetKey, position, onSelect, onBack, onPrev, onNext }: Props) {
+export function CaseFile({ s, shipments, preds, signals, erp, cost, resetKey, position, onSelect, onBack, onPrev, onNext, vessels }: Props) {
   const pred = preds.get(s.id) ?? null;
   const [tab, setTab] = useState<CaseTab>('why');
   const [openFactor, setOpenFactor] = useState<string | null>(null);
@@ -128,7 +130,7 @@ export function CaseFile({ s, shipments, preds, signals, erp, cost, resetKey, po
       <section className="case-main">
         <div className="case-card case-map">
           <div className="case-map-body">
-            <LaneMap shipments={shipments} weather={weather} preds={preds} selectedId={s.id} onSelect={onSelect} resetKey={resetKey} highlight={null} />
+            <LaneMap shipments={shipments} weather={weather} preds={preds} selectedId={s.id} onSelect={onSelect} resetKey={resetKey} highlight={null} vessels={vessels} />
           </div>
         </div>
 
