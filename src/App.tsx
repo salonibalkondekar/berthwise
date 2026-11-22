@@ -118,7 +118,7 @@ export default function App() {
             <h1>Which containers will be late, and why</h1>
             <p>
               Berthwise follows {shipments.length} containers for {IMPORTER.name}, a made-up importer, from {ORIGIN.short} to {DESTINATION.short}.
-              Each morning it ranks them by how likely they are to miss their needed-by date, says why, and flags stock-out risks. Pick a ship to see its estimate and the reasons behind it.
+              Each morning it ranks them by how likely they are to miss their needed-by date, says why, and flags stock-out risks and late fees, and suggests what to do: a faster option, a pickup to book, or a note to your customer. Pick a ship to see its estimate and the reasons behind it.
             </p>
             <div className="intro-key">
               <span><SimTag /> Shipments, vessels and the importer are invented.</span>
@@ -210,7 +210,7 @@ export default function App() {
           </div>
 
           {tab === 'today' && (
-            <RiskBrief ranked={ranked} preds={preds} loading={!signalsSettled} liveMissing={!signals && !!loadError} onSelect={select} />
+            <RiskBrief ranked={ranked} all={shipments} signals={signals} preds={preds} loading={!signalsSettled} liveMissing={!signals && !!loadError} onSelect={select} />
           )}
           {tab === 'shipments' && !selected && (
             <ShipmentList
@@ -244,7 +244,7 @@ export default function App() {
           <a href="https://portwatch.imf.org/" target="_blank" rel="noreferrer">IMF PortWatch</a> · Map © Esri · Shipments are simulated
         </span>
         <span>
-          Milestone 2 of 4 · <a href={SESSION_URL} target="_blank" rel="noreferrer">Request changes</a>
+          Milestone 3 of 4 · <a href={SESSION_URL} target="_blank" rel="noreferrer">Request changes</a>
         </span>
       </footer>
     </div>

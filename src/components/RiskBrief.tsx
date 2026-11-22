@@ -1,5 +1,7 @@
 import { RISK_LABEL, topReason, type Prediction } from '../lib/predict';
 import { IMPORTER, STAGE_LABEL, type Shipment } from '../lib/sim';
+import { lateFee, recommend, rerouteOptions, type Recommendation } from '../lib/actions';
+import type { Signals } from '../lib/signals';
 import { d, LiveTag, SimTag, usd } from './ui';
 
 const todayFmt = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
@@ -12,6 +14,8 @@ export function RiskChip({ p }: { p: Prediction }) {
 }
 
 interface Props {
+  all: Shipment[];
+  signals: Signals | null;
   ranked: Shipment[];
   preds: Map<string, Prediction>;
   loading: boolean;
@@ -19,7 +23,7 @@ interface Props {
   onSelect: (id: string) => void;
 }
 
-export function RiskBrief({ ranked, preds, loading, liveMissing, onSelect }: Props) {
+export function RiskBrief({ ranked, all, signals, preds, loading, liveMissing, onSelect }: Props) {
   if (loading) {
     return (
       <div className="brief">
@@ -31,6 +35,7 @@ export function RiskBrief({ ranked, preds, loading, liveMissing, onSelect }: Pro
   }
   const stockouts = ranked.filter((s) => preds.get(s.id)!.level === 'high');
   const atRisk = ranked.filter((s) => preds.get(s.id)!.level === 'medium');
+  const todo = todoList(all, preds, signals);
 
   return (
     <div className="brief">
@@ -51,6 +56,22 @@ export function RiskBrief({ ranked, preds, loading, liveMissing, onSelect }: Pro
               .join(' and ') + '. The rest look on track.'}
       </p>
       {liveMissing && <div className="error-box">Live weather and port data didn’t load, so these estimates leave them out.</div>}
+
+      {todo.length > 0 && (
+        <>
+          <h3 className="section-title">Do today <SimTag /></h3>
+          <ol className="todo">
+            {todo.map(({ s, rec }) => (
+              <li key={s.id}>
+                <button className={`todo-row rec-${rec.kind}`} onClick={() => onSelect(s.id)}>
+                  <span className="todo-head">{rec.headline}</span>
+                  <span className="small muted">{s.product} · {rec.detail}</span>
+                </button>
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
 
       {stockouts.length > 0 && (
         <>
@@ -116,8 +137,22 @@ export function RiskBrief({ ranked, preds, loading, liveMissing, onSelect }: Pro
       </ol>
       <p className="muted small method">
         Estimates come from a simple, explainable model: carrier ETA, adjusted for the live sea forecast along each ship’s path and live port traffic, plus simulated
-        ship speed and carrier history. Containers already at the terminal are listed under Shipments.
+        ship speed and carrier history. Recommended actions use simulated fees and freight rates.
       </p>
     </div>
   );
+}
+
+const ORDER: Record<Recommendation['kind'], number> = { pickup: 0, reroute: 1, notify: 2, none: 3 };
+
+function todoList(all: Shipment[], preds: Map<string, Prediction>, signals: Signals | null) {
+  return all
+    .map((s) => {
+      const p = preds.get(s.id) ?? null;
+      const fee = lateFee(s, p);
+      const opts = p && p.level !== 'arrived' ? rerouteOptions(s, p, signals) : [];
+      return { s, p, rec: recommend(s, p, opts, fee) };
+    })
+    .filter((x) => x.rec.kind !== 'none')
+    .sort((a, b) => ORDER[a.rec.kind] - ORDER[b.rec.kind] || (b.p?.missChance ?? 0) - (a.p?.missChance ?? 0));
 }
