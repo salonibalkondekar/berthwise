@@ -14,7 +14,7 @@ Berthwise predicts ocean container shipment delays on the Shanghai–Los Angeles
 
 1. Lane map, labeled simulated shipments, and live sea and port signals
 2. Delay predictions with reasons, a morning risk list and stock-out alerts
-3. Recommended actions, late fee warnings, reroute comparisons and customer delay notes *(this milestone)*
+3. Recommended actions, late fee warnings, reroute comparisons and customer delay notes
 4. Storm and port-strike what-ifs, and an accuracy score for predicted vs actual arrivals
 
 ## Run it
@@ -48,3 +48,8 @@ The spread of the estimate grows with days to arrival. The chance of missing the
 - **Late fee warning:** last free day = discharge (or estimated arrival) + free days. Demurrage is $250/day for 4 days, then $400/day.
 - **Reroute comparison:** keep the plan, priority pickup (−0.5 day, $350), switch to Oakland (skips live LA congestion, +1 day trucking, $2,000), or air-freight 30% of units ($5.50/kg).
 - **Recommendation:** the cheapest option that makes the needed-by date. If none does, tell the customer, and the delay note is drafted for you (friendly or formal, editable, copy or open in email).
+
+## What-if and accuracy (milestone 4)
+
+- **What-if** (`src/lib/scenario.ts`): pick a storm (area, strength, start, length) or a port strike (LA–Long Beach or Shanghai). A storm costs each ship 0.3 days (strong) or 0.55 days (extreme) for every day it is projected to be inside the area, plus a 0.3-day detour. A strike holds a port closed, then clears a backlog half as long as the strike, in arrival order. Containers already at the terminal run up storage fees. The map shows the area and recolors pins for the scenario.
+- **Accuracy** (`src/lib/accuracy.ts`): a **simulated** backtest of 48 past voyages compares the carrier ETA and a Berthwise-style estimate made 7 days out against a hidden actual arrival. It reports the typical error, the share within a day, and how many missed needed-by dates were flagged. Once real arrivals are recorded, they replace it.
