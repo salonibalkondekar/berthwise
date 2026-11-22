@@ -1,6 +1,8 @@
 import { DESTINATION, ORIGIN } from '../lib/lane';
 import { STAGE_LABEL, type Shipment, type Stage } from '../lib/sim';
 import { fmt, seaSeverity, type Signals } from '../lib/signals';
+import type { Prediction } from '../lib/predict';
+import { pct, RiskChip } from './RiskBrief';
 import { d, daysBetween, daysFromToday, LiveTag, relDays, SEA_SENTENCE, SeverityChip, SimTag, usd, weatherFor, weekday } from './ui';
 
 const STEPS: { stage: Stage; label: string }[] = [
@@ -14,13 +16,14 @@ const STEPS: { stage: Stage; label: string }[] = [
 interface Props {
   s: Shipment;
   signals: Signals | null;
+  pred: Prediction | null;
   onBack: () => void;
   onPrev: () => void;
   onNext: () => void;
   position: string;
 }
 
-export function ShipmentDetail({ s, signals, onBack, onPrev, onNext, position }: Props) {
+export function ShipmentDetail({ s, signals, pred, onBack, onPrev, onNext, position }: Props) {
   const wx = weatherFor(s, signals?.weather ?? null);
   const atSea = s.stage === 'sailing';
   const outlook = wx?.point.forecast.slice(0, 5) ?? [];
@@ -50,7 +53,10 @@ export function ShipmentDetail({ s, signals, onBack, onPrev, onNext, position }:
             <span className="mono">{s.container}</span> · {s.containerType} · {s.units.toLocaleString()} units · {usd(s.cargoValueUsd)}
           </div>
         </div>
-        <SimTag />
+        <div className="head-tags">
+          {pred && <RiskChip p={pred} />}
+          <SimTag />
+        </div>
       </div>
 
       <ol className="journey" aria-label={`Stage: ${STAGE_LABEL[s.stage]}`}>
@@ -95,11 +101,15 @@ export function ShipmentDetail({ s, signals, onBack, onPrev, onNext, position }:
         </div>
       </div>
 
-      <div className={`buffer ${spare < 0 ? 'late' : spare <= 3 ? 'tight' : 'ok'}`}>
-        {spare >= 0
-          ? `If the carrier ETA holds, it arrives ${spare} day${spare === 1 ? '' : 's'} before it's needed.`
-          : `The carrier ETA is already ${-spare} day${spare === -1 ? '' : 's'} after it's needed.`}
-      </div>
+      {pred && pred.level !== 'arrived' ? (
+        <PredictionCard s={s} p={pred} />
+      ) : (
+        <div className={`buffer ${spare < 0 ? 'late' : spare <= 3 ? 'tight' : 'ok'}`}>
+          {spare >= 0
+            ? `Arrived ${spare} day${spare === 1 ? '' : 's'} before it's needed.`
+            : `Arrived ${-spare} day${spare === -1 ? '' : 's'} after it was needed.`}
+        </div>
+      )}
 
       {freeLeft != null && (
         <div className={`buffer ${freeLeft <= 0 ? 'late' : freeLeft <= 1 ? 'tight' : 'ok'}`}>
@@ -174,7 +184,60 @@ export function ShipmentDetail({ s, signals, onBack, onPrev, onNext, position }:
       )}
 
       <div className="next-up">
-        <strong>Coming in milestone 2:</strong> a predicted arrival date with the reasons behind it, and an alert when a container is likely to miss its needed-by date.
+        <strong>Coming in milestone 3:</strong> recommended actions, late-fee warnings, reroute comparisons and a drafted delay note for your customer.
+      </div>
+    </div>
+  );
+}
+
+const days = (n: number) => `${Math.abs(n).toFixed(1)} day${Math.abs(n) === 1 ? '' : 's'}`;
+
+function PredictionCard({ s, p }: { s: Shipment; p: Prediction }) {
+  const slack = p.slackDays;
+  const total = p.factors.reduce((sum, f) => sum + f.days, 0);
+  return (
+    <div className={`predict predict-${p.level}`}>
+      <div className="predict-top">
+        <div>
+          <div className="muted small">Berthwise estimate</div>
+          <div className="predict-date">
+            {d(p.predictedArrival)} <span className="muted small">± {days(p.rangeDays)}</span>
+          </div>
+          <div className="small">
+            {Math.abs(p.delayDays) < 0.1
+              ? 'Same as the carrier ETA'
+              : `${days(p.delayDays)} ${p.delayDays > 0 ? 'later' : 'earlier'} than the carrier ETA (${d(s.carrierEta)})`}
+          </div>
+        </div>
+        <div className="miss-big">
+          <strong>{pct(p.missChance)}</strong>
+          <span className="muted small">chance it misses {d(s.needBy)}</span>
+        </div>
+      </div>
+      <div className="small predict-verdict">
+        {slack >= 0
+          ? `Expected ${days(slack)} before it's needed for ${s.needByReason.toLowerCase().startsWith('restock') ? 'restocking' : s.needByReason}.`
+          : `Expected ${days(-slack)} after it's needed for ${s.needByReason.toLowerCase().startsWith('restock') ? 'restocking' : s.needByReason}.`}
+      </div>
+      <div className="factors">
+        <div className="factors-head muted small">
+          <span>Why</span>
+          <span>{total >= 0 ? '+' : '−'}{Math.abs(total).toFixed(1)} d</span>
+        </div>
+        {p.factors.map((f) => (
+          <div key={f.id} className="factor">
+            <div className="factor-top">
+              <span className="factor-title">
+                {f.title} {f.source === 'live' ? <LiveTag /> : <SimTag />}
+              </span>
+              <span className={`factor-days ${f.days > 0 ? 'pos' : f.days < 0 ? 'neg' : ''}`}>
+                {Math.abs(f.days) < 0.1 ? '0 d' : `${f.days > 0 ? '+' : '−'}${Math.abs(f.days).toFixed(1)} d`}
+              </span>
+            </div>
+            <div className="muted small">{f.detail}</div>
+          </div>
+        ))}
+        {!p.liveDataUsed && <div className="muted small">Live weather and port data aren’t loaded, so they’re left out.</div>}
       </div>
     </div>
   );
