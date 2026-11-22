@@ -5,6 +5,7 @@ import type { Prediction } from '../lib/predict';
 import { ActionsPanel } from './ActionsPanel';
 import { SapCard } from './SapView';
 import type { ErpLink } from '../lib/erp';
+import type { DelayCost } from '../lib/money';
 import { pct, RiskChip } from './RiskBrief';
 import { d, daysBetween, daysFromToday, LiveTag, relDays, SEA_SENTENCE, SeverityChip, SimTag, usd, weatherFor, weekday } from './ui';
 
@@ -21,13 +22,14 @@ interface Props {
   signals: Signals | null;
   pred: Prediction | null;
   erp: ErpLink | null;
+  cost: DelayCost | null;
   onBack: () => void;
   onPrev: () => void;
   onNext: () => void;
   position: string;
 }
 
-export function ShipmentDetail({ s, signals, pred, erp, onBack, onPrev, onNext, position }: Props) {
+export function ShipmentDetail({ s, signals, pred, erp, cost, onBack, onPrev, onNext, position }: Props) {
   const wx = weatherFor(s, signals?.weather ?? null);
   const atSea = s.stage === 'sailing';
   const outlook = wx?.point.forecast.slice(0, 5) ?? [];
@@ -117,7 +119,7 @@ export function ShipmentDetail({ s, signals, pred, erp, onBack, onPrev, onNext, 
 
       {erp && <SapCard link={erp} />}
 
-      <ActionsPanel s={s} pred={pred} signals={signals} />
+      <ActionsPanel s={s} pred={pred} signals={signals} cost={cost} />
 
       {freeLeft != null && (
         <div className={`buffer ${freeLeft <= 0 ? 'late' : freeLeft <= 1 ? 'tight' : 'ok'}`}>

@@ -1,3 +1,4 @@
+import { CARRIER_HISTORY } from './carriers';
 import { WAYPOINTS } from './lane';
 import { LANE_NM, type Shipment } from './sim';
 import { seaSeverity, SEVERITY_LABEL, type Severity, type Signals } from './signals';
@@ -35,12 +36,7 @@ const DAY = 86_400_000;
 /** Fraction of speed lost in a day of these conditions. Rough figures for a large container ship. */
 const SPEED_LOSS: Record<Severity, number> = { calm: 0, moderate: 0.03, rough: 0.12, severe: 0.25, unknown: 0 };
 
-/** SIMULATED: average days late per carrier on this lane, as if from past voyages. */
-export const CARRIER_HISTORY: Record<string, { avgLateDays: number; onTimePct: number }> = {
-  'Orion Lines': { avgLateDays: 0.9, onTimePct: 61 },
-  'Kestrel Ocean': { avgLateDays: 0.3, onTimePct: 78 },
-  'Meridian Box Co.': { avgLateDays: 1.6, onTimePct: 49 },
-};
+export { CARRIER_HISTORY };
 
 const round1 = (x: number) => Math.round(x * 10) / 10;
 const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x));
