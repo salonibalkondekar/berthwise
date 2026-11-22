@@ -38,7 +38,7 @@ export interface Shipment {
   distanceRemainingNm: number;
   dischargedAt: Date | null;
   freeDays: number;
-  simulated: true;
+  simulated: boolean; // false for shipments the user imported
 }
 
 const VESSELS = [

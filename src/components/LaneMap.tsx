@@ -14,10 +14,10 @@ const LANE_BOUNDS = L.latLngBounds([
   [52, 246],
 ]);
 
-const shipIcon = (selected: boolean, stage: Shipment['stage'], risk: string) =>
+const shipIcon = (selected: boolean, stage: Shipment['stage'], risk: string, sim: boolean) =>
   L.divIcon({
     className: '',
-    html: `<div class="ship-pin ${selected ? 'selected' : ''} pin-${stage} pin-risk-${risk}"><span>SIM</span></div>`,
+    html: `<div class="ship-pin ${selected ? 'selected' : ''} pin-${stage} pin-risk-${risk}"><span>${sim ? 'SIM' : 'CSV'}</span></div>`,
     iconSize: [34, 20],
     iconAnchor: [17, 10],
   });
@@ -103,15 +103,15 @@ export function LaneMap({ shipments, weather, preds, selectedId, onSelect, reset
         <Marker
           key={s.id}
           position={pos}
-          icon={shipIcon(s.id === selectedId, s.stage, preds.get(s.id)?.level ?? 'none')}
+          icon={shipIcon(s.id === selectedId, s.stage, preds.get(s.id)?.level ?? 'none', s.simulated)}
           zIndexOffset={s.id === selectedId ? 1000 : 0}
           keyboard
-          title={`${s.product}, simulated shipment`}
+          title={`${s.product}, ${s.simulated ? 'simulated' : 'imported'} shipment`}
           eventHandlers={{ click: () => onSelect(s.id) }}
         >
           <Tooltip direction="top" offset={[0, -10]}>
             <div className="tt-title">
-              {s.product} <span className="tt-sim">SIM</span>
+              {s.product} {s.simulated && <span className="tt-sim">SIM</span>}
             </div>
             <span className="mono">{s.container}</span> · {STAGE_LABEL[s.stage]}
             {preds.get(s.id) && preds.get(s.id)!.level !== 'arrived' && <div>{RISK_LABEL[preds.get(s.id)!.level]}</div>}

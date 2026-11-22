@@ -13,6 +13,10 @@ import { predict, rankByRisk, type Prediction } from './lib/predict';
 import { erpLinks } from './lib/erp';
 import { SapView } from './components/SapView';
 import { PlanView } from './components/PlanView';
+import { DataView } from './components/DataView';
+import { parseCsv } from './lib/csv';
+import { importShipments } from './lib/importer';
+import type { Shipment } from './lib/sim';
 import { carrierScorecard, delayCosts, reorderAdvice } from './lib/money';
 import { applyScenario, scenarioRange, type Scenario } from './lib/scenario';
 import { fmt, type PortSignal, type Signals, type WeatherPoint } from './lib/signals';
@@ -20,10 +24,17 @@ import { fmt, type PortSignal, type Signals, type WeatherPoint } from './lib/sig
 const SESSION_URL = 'https://app.devin.ai/sessions/a3eb9ff2b29a4b0e900ee8b290350bc3';
 const INTRO_KEY = 'berthwise:intro-dismissed';
 
-type Tab = 'today' | 'shipments' | 'sap' | 'plan' | 'whatif' | 'accuracy' | 'signals';
+type Tab = 'today' | 'shipments' | 'sap' | 'plan' | 'whatif' | 'accuracy' | 'signals' | 'data';
+const IMPORT_KEY = 'bw-import-csv';
 
 export default function App() {
-  const shipments = useMemo(() => generateShipments(), []);
+  const demo = useMemo(() => generateShipments(), []);
+  const [imported, setImported] = useState<Shipment[] | null>(() => {
+    const csv = localStorage.getItem(IMPORT_KEY);
+    const res = csv ? importShipments(parseCsv(csv)) : null;
+    return res?.shipments.length ? res.shipments : null;
+  });
+  const shipments = imported ?? demo;
   const [signals, setSignals] = useState<Signals | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -146,7 +157,7 @@ export default function App() {
             <h1>Which containers will be late, and why</h1>
             <p>
               Berthwise follows {shipments.length} containers for {IMPORTER.name}, a made-up importer, from {ORIGIN.short} to {DESTINATION.short}.
-              Each morning it ranks them by how likely they are to miss their needed-by date, says why, and flags stock-out risks and late fees, and suggests what to do: a faster option, a pickup to book, or a note to your customer. The SAP tab shows the purchase orders, plant stock and customer sales orders behind each container, and Planning shows what delays cost, when to reorder and which carriers keep their dates. Try storms and port strikes under What-if, and see how accurate past estimates were under Accuracy. Pick a ship to see its estimate and the reasons behind it.
+              Each morning it ranks them by how likely they are to miss their needed-by date, says why, and flags stock-out risks and late fees, and suggests what to do: a faster option, a pickup to book, or a note to your customer. The SAP tab shows the purchase orders, plant stock and customer sales orders behind each container, and Planning shows what delays cost, when to reorder and which carriers keep their dates. Try storms and port strikes under What-if, and see how accurate past estimates were under Accuracy. Import · Export loads your own shipments from a CSV, sends results to SAP or Excel, and builds the morning email digest. Pick a ship to see its estimate and the reasons behind it.
             </p>
             <div className="intro-key">
               <span><SimTag /> Shipments, vessels and the importer are invented.</span>
@@ -157,7 +168,7 @@ export default function App() {
         </section>
       ) : (
         <div className="banner" role="note">
-          <span><SimTag /> Shipments are invented demo data</span>
+          {imported ? <span><strong>Your file</strong> · {shipments.length} imported shipments; SAP, fees and history stay simulated</span> : <span><SimTag /> Shipments are invented demo data</span>}
           <span><LiveTag /> Weather and port traffic are real</span>
           <button className="link-btn small" onClick={() => setShowIntro(true)}>What is this?</button>
         </div>
@@ -172,7 +183,7 @@ export default function App() {
 
       <section className="kpis">
         <div className="kpi">
-          <div className="kpi-label">Containers tracked <SimTag /></div>
+          <div className="kpi-label">Containers tracked {imported ? <span className="muted small">your file</span> : <SimTag />}</div>
           <div className="kpi-value">{shipments.length}</div>
           <div className="kpi-foot">
             {preds.size ? (
@@ -216,7 +227,7 @@ export default function App() {
               <div><span className="dot wx-unknown" /> No wave data</div>
             </div>
             <div className="legend-group">
-              <div className="legend-title">Shipments <SimTag /></div>
+              <div className="legend-title">Shipments {!imported && <SimTag />}</div>
               <div><span className="pin-mini pin-risk-high">SIM</span> Likely late</div>
               <div><span className="pin-mini pin-risk-medium">SIM</span> At risk</div>
               <div><span className="pin-mini">SIM</span> On track</div>
@@ -247,6 +258,9 @@ export default function App() {
             </button>
             <button role="tab" aria-selected={tab === 'signals'} onClick={() => setTab('signals')}>
               Signals
+            </button>
+            <button role="tab" aria-selected={tab === 'data'} onClick={() => { setSelectedId(null); setTab('data'); }}>
+              Import · Export
             </button>
           </div>
 
@@ -282,6 +296,21 @@ export default function App() {
           {tab === 'plan' && (costs ? <PlanView shipments={shipments} costs={costs} reorder={reorder} carriers={carriers} onSelect={select} /> : <div className="brief"><div className="skeleton" style={{ height: 160 }} /></div>)}
           {tab === 'whatif' && <WhatIf shipments={shipments} preds={preds} scenario={scenario} onChange={setScenario} onSelect={select} />}
           {tab === 'accuracy' && <Accuracy />}
+          {tab === 'data' && (erp && costs ? (
+            <DataView
+              shipments={shipments}
+              demo={demo}
+              imported={!!imported}
+              preds={preds}
+              erp={erp}
+              costs={costs}
+              reorder={reorder}
+              carriers={carriers}
+              signals={signals}
+              onImport={(csv, list) => { localStorage.setItem(IMPORT_KEY, csv); setSelectedId(null); setImported(list); }}
+              onReset={() => { localStorage.removeItem(IMPORT_KEY); setSelectedId(null); setImported(null); }}
+            />
+          ) : <div className="brief"><div className="skeleton" style={{ height: 160 }} /></div>)}
           {tab === 'signals' && <SignalsPanel signals={signals} error={loadError} refreshing={refreshing} onRefresh={() => load(true)} />}
           </div>
         </aside>
@@ -290,10 +319,10 @@ export default function App() {
       <footer className="footer">
         <span>
           Weather: <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a> (CC BY 4.0) · Port traffic:{' '}
-          <a href="https://portwatch.imf.org/" target="_blank" rel="noreferrer">IMF PortWatch</a> · Map © Esri · Shipments are simulated
+          <a href="https://portwatch.imf.org/" target="_blank" rel="noreferrer">IMF PortWatch</a> · Map © Esri · {imported ? 'Shipments from your file' : 'Shipments are simulated'}
         </span>
         <span>
-          Milestone 6 of 7 · <a href={SESSION_URL} target="_blank" rel="noreferrer">Request changes</a>
+          Milestone 7 of 7 · <a href={SESSION_URL} target="_blank" rel="noreferrer">Request changes</a>
         </span>
       </footer>
     </div>
