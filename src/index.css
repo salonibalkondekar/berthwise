@@ -567,3 +567,32 @@ button, .btn-secondary, a.btn-secondary, summary { -webkit-tap-highlight-color: 
 .custom[open] summary::after { transform: rotate(-135deg); margin-top: 6px; }
 .custom .seg-wide { margin-top: 0; }
 .custom[open] > :not(summary) { animation: pane-in 220ms var(--ease-out) both; }
+
+/* Milestone 5: SAP view */
+.sap-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.sap-kpis .acc-big { font-size: 24px; }
+.sap-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--surface); }
+.sap-list li + li { border-top: 1px solid var(--border); }
+.sap-row { width: 100%; text-align: left; background: none; border: 0; padding: 10px 12px; display: grid; gap: 3px; font: inherit; color: inherit; cursor: pointer; transition: background 160ms ease; }
+.sap-row.static { cursor: default; }
+.sap-row:not(.static):hover { background: var(--surface-2); }
+.sap-row:not(.static):active { background: var(--accent-soft); }
+.sap-title-row { justify-content: space-between; }
+.sap-title-row > span:first-child { display: flex; align-items: center; gap: 6px; }
+.cover { margin-top: 6px; display: grid; gap: 3px; }
+.cover-track { position: relative; height: 8px; border-radius: 999px; background: rgba(19, 32, 31, 0.07); }
+.cover-stock { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: #34a37a; transition: width 300ms var(--ease-out); }
+.cover-stock.low { background: #d99a2b; }
+.cover-gap { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, #e5484d 0 4px, #f7c4c5 4px 8px); border-radius: 0 999px 999px 0; }
+.cover-ship { position: absolute; top: -4px; width: 4px; height: 16px; margin-left: -2px; border-radius: 2px; background: var(--text); box-shadow: 0 0 0 2px var(--surface); }
+.cover-ship.short { background: #b91c1c; }
+.cover-labels { display: flex; justify-content: space-between; gap: 8px; }
+.sap-card { gap: 10px; }
+.sap-facts { margin: 0; grid-template-columns: 70px 1fr; }
+.sap-table { font-size: 12.5px; }
+.sap-table tr.clickable { cursor: pointer; }
+.sap-table tr.clickable:hover td { background: var(--surface-2); }
+.sap-po { margin-top: 16px; }
+.sap-po table { margin-bottom: 10px; }
+@media (max-width: 520px) { .sap-kpis { grid-template-columns: 1fr 1fr; } }
+@media (prefers-reduced-motion: reduce) { .cover-stock { transition: none; } }

@@ -2,6 +2,8 @@ import { RISK_LABEL, topReason, type Prediction } from '../lib/predict';
 import { IMPORTER, STAGE_LABEL, type Shipment } from '../lib/sim';
 import { lateFee, recommend, rerouteOptions, type Recommendation } from '../lib/actions';
 import type { Signals } from '../lib/signals';
+import { erpTotals, type ErpLink } from '../lib/erp';
+import { OrderRow } from './SapView';
 import { d, LiveTag, SimTag, usd } from './ui';
 
 const todayFmt = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
@@ -18,12 +20,13 @@ interface Props {
   signals: Signals | null;
   ranked: Shipment[];
   preds: Map<string, Prediction>;
+  erp: Map<string, ErpLink> | null;
   loading: boolean;
   liveMissing: boolean;
   onSelect: (id: string) => void;
 }
 
-export function RiskBrief({ ranked, all, signals, preds, loading, liveMissing, onSelect }: Props) {
+export function RiskBrief({ erp, ranked, all, signals, preds, loading, liveMissing, onSelect }: Props) {
   if (loading) {
     return (
       <div className="brief">
@@ -36,6 +39,7 @@ export function RiskBrief({ ranked, all, signals, preds, loading, liveMissing, o
   const stockouts = ranked.filter((s) => preds.get(s.id)!.level === 'high');
   const atRisk = ranked.filter((s) => preds.get(s.id)!.level === 'medium');
   const todo = todoList(all, preds, signals);
+  const orders = erp ? erpTotals(erp) : null;
 
   return (
     <div className="brief">
@@ -97,6 +101,18 @@ export function RiskBrief({ ranked, all, signals, preds, loading, liveMissing, o
               </button>
             );
           })}
+        </>
+      )}
+
+      {orders && orders.atRisk.length > 0 && (
+        <>
+          <h3 className="section-title">
+            Customer orders at risk <SimTag /> <span className="muted small">{usd(orders.atRiskValue)}</span>
+          </h3>
+          <ul className="sap-list">
+            {orders.atRisk.slice(0, 4).map((o) => <OrderRow key={o.so} o={o} onSelect={onSelect} />)}
+          </ul>
+          {orders.atRisk.length > 4 && <p className="small muted">{orders.atRisk.length - 4} more in the SAP tab.</p>}
         </>
       )}
 
