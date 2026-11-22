@@ -74,7 +74,7 @@ export function LaneMap({ shipments, weather, selectedId, onSelect }: Props) {
 
       {[ORIGIN, DESTINATION].map((p) => (
         <CircleMarker key={p.code} center={p.pos} radius={9} pathOptions={{ className: 'port-dot', weight: 3 }}>
-          <Tooltip permanent direction={p === ORIGIN ? 'left' : 'right'} className="port-label">
+          <Tooltip permanent direction="bottom" offset={[0, 8]} className="port-label">
             {p.name}
           </Tooltip>
         </CircleMarker>

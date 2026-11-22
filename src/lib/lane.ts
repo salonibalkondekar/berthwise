@@ -15,7 +15,7 @@ export const DESTINATION = {
 export const ANCHORAGE: LatLon = [33.62, 241.9];
 
 /** Fractions along the lane where live weather is sampled. */
-export const WAYPOINT_FRACTIONS = [0, 0.08, 0.18, 0.3, 0.42, 0.54, 0.66, 0.78, 0.88, 0.96, 1];
+export const WAYPOINT_FRACTIONS = [0, 0.12, 0.2, 0.3, 0.42, 0.54, 0.66, 0.78, 0.88, 0.96, 1];
 
 export const WAYPOINTS = WAYPOINT_FRACTIONS.map((f, i) => ({
   id: `wp${i}`,

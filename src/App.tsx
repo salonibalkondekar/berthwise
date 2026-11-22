@@ -14,8 +14,13 @@ const usd = (n: number) => n.toLocaleString('en-US', { style: 'currency', curren
 function weatherFor(s: Shipment, weather: WeatherPoint[] | null) {
   if (!weather) return null;
   let best = 0;
+  let bestDist = Infinity;
   WAYPOINTS.forEach((wp, i) => {
-    if (Math.abs(wp.fraction - s.progress) < Math.abs(WAYPOINTS[best].fraction - s.progress)) best = i;
+    const dist = Math.abs(wp.fraction - s.progress);
+    if (weather[i]?.waveHeightM != null && dist < bestDist) {
+      best = i;
+      bestDist = dist;
+    }
   });
   return { point: weather[best], name: WAYPOINTS[best].name };
 }
@@ -189,7 +194,8 @@ function ShipmentDetail({ s, signals, onBack }: { s: Shipment; signals: Signals 
   const wx = weatherFor(s, signals?.weather ?? null);
   const dest = signals?.ports.destination;
   const next3 = wx?.point.forecast.slice(0, 3) ?? [];
-  const maxWave = next3.reduce((m, f) => Math.max(m, f.waveMaxM ?? 0), 0);
+  const waves3 = next3.map((f) => f.waveMaxM).filter((x): x is number => x != null);
+  const maxWave = waves3.length ? Math.max(...waves3) : null;
   return (
     <div className="detail">
       <button className="link-btn" onClick={onBack}>← All shipments</button>
@@ -232,7 +238,7 @@ function ShipmentDetail({ s, signals, onBack }: { s: Shipment; signals: Signals 
           <div className="wx-grid">
             <div><div className="muted small">Waves now</div>{fmt(wx.point.waveHeightM, 1, ' m')}</div>
             <div><div className="muted small">Wind now</div>{fmt(wx.point.windKn, 0, ' kn')}</div>
-            <div><div className="muted small">Max waves, 3 days</div>{next3.length ? `${maxWave.toFixed(1)} m` : '—'}</div>
+            <div><div className="muted small">Max waves, 3 days</div>{fmt(maxWave, 1, ' m')}</div>
           </div>
         </div>
       ) : (
