@@ -4,22 +4,25 @@ import type { Prediction } from '../lib/predict';
 import { IMPORTER, type Shipment } from '../lib/sim';
 import type { Signals } from '../lib/signals';
 import { d, SimTag } from './ui';
+import type { DelayCost } from '../lib/money';
+import { CostCard } from './PlanView';
 
-export function useActions(s: Shipment, pred: Prediction | null, signals: Signals | null) {
+export function useActions(s: Shipment, pred: Prediction | null, signals: Signals | null, atStake = 0) {
   return useMemo(() => {
     const fee = lateFee(s, pred);
     const opts = pred && pred.level !== 'arrived' ? rerouteOptions(s, pred, signals) : [];
-    return { fee, opts, rec: recommend(s, pred, opts, fee) };
-  }, [s, pred, signals]);
+    return { fee, opts, rec: recommend(s, pred, opts, fee, atStake) };
+  }, [s, pred, signals, atStake]);
 }
 
-export function ActionsPanel({ s, pred, signals }: { s: Shipment; pred: Prediction | null; signals: Signals | null }) {
-  const { fee, opts, rec } = useActions(s, pred, signals);
+export function ActionsPanel({ s, pred, signals, cost }: { s: Shipment; pred: Prediction | null; signals: Signals | null; cost: DelayCost | null }) {
+  const { fee, opts, rec } = useActions(s, pred, signals, cost ? cost.doNothing - cost.fees : 0);
   const showNote = !!pred && pred.level !== 'arrived' && pred.level !== 'low';
   return (
     <section className="actions">
       <h3 className="section-title">What to do <SimTag /></h3>
       <RecommendationBox rec={rec} />
+      {cost && <CostCard c={cost} />}
       {fee && <LateFeeCard fee={fee} />}
       {opts.length > 0 && pred && pred.level !== 'low' && <RerouteTable s={s} opts={opts} rec={rec} />}
       {showNote && pred && <DelayNote s={s} p={pred} rec={rec} />}
