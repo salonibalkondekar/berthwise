@@ -92,6 +92,9 @@ export const LANE_NM = distanceNm(ORIGIN.pos, DESTINATION.pos);
 /** Day offsets of departure relative to today; negative = already sailed. Covers every stage. */
 const DEPARTURE_OFFSETS = [6, 3, 1, -1, -3, -5, -7, -9, -11, -13, -15, -17, -19, -22];
 
+/** Days of slack between the carrier ETA and the needed-by date. A few are tight on purpose. */
+const NEED_BY_SLACK = [12, 3, 14, 2, 9, 16, 1, 10, 6, 13, 4, 2, 11, 8];
+
 export function generateShipments(now = new Date()): Shipment[] {
   const today = startOfDay(now);
   const r = rng(Math.floor(today.getTime() / DAY / 7)); // reshuffles weekly, stable within a week
@@ -136,7 +139,8 @@ export function generateShipments(now = new Date()): Shipment[] {
       dischargedAt = new Date(Math.min(now.getTime(), carrierEta.getTime() + Math.floor(r() * 2) * DAY));
     }
 
-    const needBy = new Date(carrierEta.getTime() + (4 + Math.floor(r() * 14)) * DAY);
+    r();
+    const needBy = new Date(startOfDay(carrierEta).getTime() + NEED_BY_SLACK[i] * DAY + 12 * 3600000);
     const valuePerUnit = 6 + r() * 30;
 
     return {
