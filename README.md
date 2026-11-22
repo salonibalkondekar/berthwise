@@ -1,32 +1,28 @@
-# React + TypeScript + Vite
+# Berthwise
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Berthwise predicts ocean container shipment delays on the Shanghai–Los Angeles lane, explains why they happen, and recommends what to do. It is a portfolio project.
 
-Currently, two official plugins are available:
+## What's real and what's simulated
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+| Data | Source |
+| --- | --- |
+| Sea conditions (waves, swell, wind) along the lane | [Open-Meteo](https://open-meteo.com/) Marine and Forecast APIs, free with no key |
+| Daily container ship calls at Shanghai and Los Angeles–Long Beach | [IMF PortWatch](https://portwatch.imf.org/), about a week behind |
+| Shipments, containers, vessels, carriers, POs and the importer | **Simulated.** Invented demo data, labeled SIM in the app |
 
-## React Compiler
+## Milestones
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+1. Lane map, labeled simulated shipments, and live sea and port signals *(this milestone)*
+2. Delay predictions with reasons, a morning risk list and stock-out alerts
+3. Recommended actions, late fee warnings, reroute comparisons and customer delay notes
+4. Storm and port-strike what-ifs, and an accuracy score for predicted vs actual arrivals
 
-## Expanding the Oxlint configuration
+## Run it
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm install
+npm run build
+npm start          # http://localhost:8787
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+For development, run `node server/index.mjs` and `npm run dev` at the same time. Vite forwards `/api` requests to port 8787.
