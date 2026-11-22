@@ -239,12 +239,12 @@ export function delayNote(s: Shipment, p: Prediction, rec: Recommendation, tone:
       : rec.option && rec.option.id !== 'stay'
       ? `To limit the impact, we're looking at one option: ${rec.option.title.toLowerCase()}, which would get ${rec.option.id === 'air' ? 'part of the order' : 'it'} to you around ${longFmt.format(rec.option.arrival)}.`
       : '';
-  const subject = `${s.po}: ${s.product} now expected ${fmt(p.predictedArrival)}`;
+  const subject = `PO ${s.po}: ${s.product} now expected ${fmt(p.predictedArrival)}`;
   const body =
     tone === 'friendly'
       ? [
           `Hi ${c.contact},`,
-          `Quick heads-up on ${s.po} (${s.units.toLocaleString()} ${s.product.toLowerCase()}). The container ${where} and we now expect it around ${longFmt.format(p.predictedArrival)}${late ? `, about ${daysLate} day${daysLate === 1 ? '' : 's'} after the ${fmt(s.needBy)} date we planned for` : ''}.`,
+          `Quick heads-up on PO ${s.po} (${s.units.toLocaleString()} ${s.product.toLowerCase()}). The container ${where} and we now expect it around ${longFmt.format(p.predictedArrival)}${late ? `, about ${daysLate} day${daysLate === 1 ? '' : 's'} after the ${fmt(s.needBy)} date we planned for` : ''}.`,
           why.length ? `The main reasons: ${why.join(' and ')}.` : '',
           mitigation,
           `I'll update you as soon as it lands. Sorry for the hassle.`,
