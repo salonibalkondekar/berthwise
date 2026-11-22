@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { LaneMap } from './components/LaneMap';
 import { ShipmentDetail } from './components/ShipmentDetail';
 import { Accuracy } from './components/Accuracy';
@@ -31,6 +31,8 @@ export default function App() {
   const [resetKey, setResetKey] = useState(0);
   const [showIntro, setShowIntro] = useState(() => localStorage.getItem(INTRO_KEY) !== '1');
   const panelRef = useRef<HTMLElement>(null);
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const [indicator, setIndicator] = useState<{ x: number; w: number } | null>(null);
   const signalsSettled = !!signals || !!loadError;
   const preds = useMemo(() => {
     const m = new Map<string, Prediction>();
@@ -97,6 +99,16 @@ export default function App() {
     (m, w) => (w.waveHeightM != null && (m == null || w.waveHeightM > (m.waveHeightM ?? 0)) ? w : m),
     null,
   );
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      const el = tabsRef.current?.querySelector<HTMLButtonElement>('[aria-selected="true"]');
+      if (el) setIndicator({ x: el.offsetLeft, w: el.offsetWidth });
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [tab, likelyLate]);
 
   return (
     <div className="app">
@@ -205,7 +217,8 @@ export default function App() {
         </div>
 
         <aside className="panel" ref={panelRef}>
-          <div className="tabs" role="tablist">
+          <div className="tabs" role="tablist" ref={tabsRef}>
+            {indicator && <span className="tab-indicator" style={{ transform: `translateX(${indicator.x}px)`, width: indicator.w }} />}
             <button role="tab" aria-selected={tab === 'today'} onClick={() => { setSelectedId(null); setTab('today'); }}>
               Today {likelyLate > 0 && <span className="count count-alert">{likelyLate}</span>}
             </button>
@@ -223,6 +236,7 @@ export default function App() {
             </button>
           </div>
 
+          <div className="pane" key={tab === 'shipments' ? `shipments-${selected ? 'detail' : 'list'}` : tab}>
           {tab === 'today' && (
             <RiskBrief ranked={ranked} all={shipments} signals={signals} preds={preds} loading={!signalsSettled} liveMissing={!signals && !!loadError} onSelect={select} />
           )}
@@ -251,6 +265,7 @@ export default function App() {
           {tab === 'whatif' && <WhatIf shipments={shipments} preds={preds} scenario={scenario} onChange={setScenario} onSelect={select} />}
           {tab === 'accuracy' && <Accuracy />}
           {tab === 'signals' && <SignalsPanel signals={signals} error={loadError} refreshing={refreshing} onRefresh={() => load(true)} />}
+          </div>
         </aside>
       </main>
 
