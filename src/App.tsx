@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CommandPalette, NavIcon, type PageItem } from './components/CommandPalette';
 import { LaneMap } from './components/LaneMap';
-import { ShipmentDetail } from './components/ShipmentDetail';
+import { CaseFile } from './components/CaseFile';
 import { Accuracy } from './components/Accuracy';
 import { RiskBrief } from './components/RiskBrief';
 import { WhatIf } from './components/WhatIf';
@@ -154,6 +154,7 @@ export default function App() {
 
   const page = NAV.find((n) => n.id === tab)!;
   const mapTab = MAP_TABS.includes(tab);
+  const caseOpen = tab === 'shipments' && !!selected;
   const go = (t: Tab) => {
     if (t !== 'shipments') setSelectedId(null);
     setTab(t);
@@ -196,8 +197,21 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <div>
-          <h1 className="page-title">{page.label}</h1>
-          <div className="brand-sub">{page.hint}</div>
+          {caseOpen && selected ? (
+            <>
+              <nav className="crumbs small" aria-label="Breadcrumb">
+                <button className="link-btn" onClick={clearSelection}>{NAV.find((n) => n.id === backTab)?.label ?? 'Shipments'}</button>
+                <span aria-hidden>›</span>
+                <span>Case file</span>
+              </nav>
+              <h1 className="page-title">{selected.product}</h1>
+            </>
+          ) : (
+            <>
+              <h1 className="page-title">{page.label}</h1>
+              <div className="brand-sub">{page.hint}</div>
+            </>
+          )}
         </div>
         <div className="topbar-right">
           <button className="search-btn" onClick={() => setPaletteOpen(true)} aria-label="Search">
@@ -211,6 +225,7 @@ export default function App() {
         </div>
       </header>
 
+      {!caseOpen && (<>
       {showIntro ? (
         <section className="intro">
           <div className="intro-text">
@@ -272,6 +287,24 @@ export default function App() {
         <PortKpi port={signals?.ports.destination ?? null} loading={!signals && !loadError} label={`${DESTINATION.short} port traffic`} />
       </section>
 
+      </>)}
+
+      {caseOpen && selected ? (
+        <CaseFile
+          s={selected}
+          shipments={shipments}
+          preds={preds}
+          signals={signals}
+          erp={erp?.get(selected.id) ?? null}
+          cost={costs?.get(selected.id) ?? null}
+          resetKey={resetKey}
+          position={`${idx + 1} of ${shipments.length}`}
+          onSelect={select}
+          onBack={clearSelection}
+          onPrev={() => step(-1)}
+          onNext={() => step(1)}
+        />
+      ) : (
       <main className={`main ${mapTab ? '' : 'main-wide'}`}>
         {mapTab && (<div className="map-wrap">
           <LaneMap shipments={shipments} weather={signals?.weather ?? null} preds={mapPreds} selectedId={selectedId} onSelect={select} resetKey={resetKey} highlight={tab === 'whatif' ? scenarioRange(scenario) : null} />
@@ -311,19 +344,6 @@ export default function App() {
               onSelect={select}
             />
           )}
-          {tab === 'shipments' && selected && (
-            <ShipmentDetail
-              s={selected}
-              signals={signals}
-              pred={preds.get(selected.id) ?? null}
-              erp={erp?.get(selected.id) ?? null}
-              cost={costs?.get(selected.id) ?? null}
-              onBack={clearSelection}
-              onPrev={() => step(-1)}
-              onNext={() => step(1)}
-              position={`${idx + 1} of ${shipments.length}`}
-            />
-          )}
           {tab === 'sap' && (erp ? <SapView links={erp} onSelect={select} /> : <div className="brief"><div className="skeleton" style={{ height: 160 }} /></div>)}
           {tab === 'plan' && (costs ? <PlanView shipments={shipments} costs={costs} reorder={reorder} carriers={carriers} onSelect={select} /> : <div className="brief"><div className="skeleton" style={{ height: 160 }} /></div>)}
           {tab === 'whatif' && <WhatIf shipments={shipments} preds={preds} scenario={scenario} onChange={setScenario} onSelect={select} />}
@@ -347,6 +367,7 @@ export default function App() {
           </div>
         </aside>
       </main>
+      )}
 
       <footer className="footer">
         <span>
