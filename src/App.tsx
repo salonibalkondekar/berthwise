@@ -12,13 +12,15 @@ import { generateShipments, IMPORTER, LANE_NM } from './lib/sim';
 import { predict, rankByRisk, type Prediction } from './lib/predict';
 import { erpLinks } from './lib/erp';
 import { SapView } from './components/SapView';
+import { PlanView } from './components/PlanView';
+import { carrierScorecard, delayCosts, reorderAdvice } from './lib/money';
 import { applyScenario, scenarioRange, type Scenario } from './lib/scenario';
 import { fmt, type PortSignal, type Signals, type WeatherPoint } from './lib/signals';
 
 const SESSION_URL = 'https://app.devin.ai/sessions/a3eb9ff2b29a4b0e900ee8b290350bc3';
 const INTRO_KEY = 'berthwise:intro-dismissed';
 
-type Tab = 'today' | 'shipments' | 'sap' | 'whatif' | 'accuracy' | 'signals';
+type Tab = 'today' | 'shipments' | 'sap' | 'plan' | 'whatif' | 'accuracy' | 'signals';
 
 export default function App() {
   const shipments = useMemo(() => generateShipments(), []);
@@ -42,6 +44,9 @@ export default function App() {
     return m;
   }, [shipments, signals, signalsSettled]);
   const erp = useMemo(() => (preds.size ? erpLinks(shipments, preds) : null), [shipments, preds]);
+  const costs = useMemo(() => (erp ? delayCosts(shipments, preds, erp, signals) : null), [shipments, preds, erp, signals]);
+  const reorder = useMemo(() => (erp ? reorderAdvice(shipments, erp) : []), [shipments, erp]);
+  const carriers = useMemo(() => carrierScorecard(shipments, preds, costs), [shipments, preds, costs]);
   const ranked = useMemo(() => (preds.size ? rankByRisk(shipments, preds) : []), [shipments, preds]);
   const [scenario, setScenario] = useState<Scenario>({ kind: 'storm', zone: 'nwp', startIn: 1, days: 3, strength: 'extreme' });
   const mapPreds = useMemo(
@@ -141,7 +146,7 @@ export default function App() {
             <h1>Which containers will be late, and why</h1>
             <p>
               Berthwise follows {shipments.length} containers for {IMPORTER.name}, a made-up importer, from {ORIGIN.short} to {DESTINATION.short}.
-              Each morning it ranks them by how likely they are to miss their needed-by date, says why, and flags stock-out risks and late fees, and suggests what to do: a faster option, a pickup to book, or a note to your customer. The SAP tab shows the purchase orders, plant stock and customer sales orders behind each container. Try storms and port strikes under What-if, and see how accurate past estimates were under Accuracy. Pick a ship to see its estimate and the reasons behind it.
+              Each morning it ranks them by how likely they are to miss their needed-by date, says why, and flags stock-out risks and late fees, and suggests what to do: a faster option, a pickup to book, or a note to your customer. The SAP tab shows the purchase orders, plant stock and customer sales orders behind each container, and Planning shows what delays cost, when to reorder and which carriers keep their dates. Try storms and port strikes under What-if, and see how accurate past estimates were under Accuracy. Pick a ship to see its estimate and the reasons behind it.
             </p>
             <div className="intro-key">
               <span><SimTag /> Shipments, vessels and the importer are invented.</span>
@@ -231,6 +236,9 @@ export default function App() {
             <button role="tab" aria-selected={tab === 'sap'} onClick={() => { setSelectedId(null); setTab('sap'); }}>
               SAP
             </button>
+            <button role="tab" aria-selected={tab === 'plan'} onClick={() => { setSelectedId(null); setTab('plan'); }}>
+              Planning
+            </button>
             <button role="tab" aria-selected={tab === 'whatif'} onClick={() => { setSelectedId(null); setTab('whatif'); }}>
               What-if
             </button>
@@ -244,7 +252,7 @@ export default function App() {
 
           <div className="pane" key={tab === 'shipments' ? `shipments-${selected ? 'detail' : 'list'}` : tab}>
           {tab === 'today' && (
-            <RiskBrief erp={erp} ranked={ranked} all={shipments} signals={signals} preds={preds} loading={!signalsSettled} liveMissing={!signals && !!loadError} onSelect={select} />
+            <RiskBrief erp={erp} costs={costs} ranked={ranked} all={shipments} signals={signals} preds={preds} loading={!signalsSettled} liveMissing={!signals && !!loadError} onSelect={select} />
           )}
           {tab === 'shipments' && !selected && (
             <ShipmentList
@@ -263,6 +271,7 @@ export default function App() {
               signals={signals}
               pred={preds.get(selected.id) ?? null}
               erp={erp?.get(selected.id) ?? null}
+              cost={costs?.get(selected.id) ?? null}
               onBack={clearSelection}
               onPrev={() => step(-1)}
               onNext={() => step(1)}
@@ -270,6 +279,7 @@ export default function App() {
             />
           )}
           {tab === 'sap' && (erp ? <SapView links={erp} onSelect={select} /> : <div className="brief"><div className="skeleton" style={{ height: 160 }} /></div>)}
+          {tab === 'plan' && (costs ? <PlanView shipments={shipments} costs={costs} reorder={reorder} carriers={carriers} onSelect={select} /> : <div className="brief"><div className="skeleton" style={{ height: 160 }} /></div>)}
           {tab === 'whatif' && <WhatIf shipments={shipments} preds={preds} scenario={scenario} onChange={setScenario} onSelect={select} />}
           {tab === 'accuracy' && <Accuracy />}
           {tab === 'signals' && <SignalsPanel signals={signals} error={loadError} refreshing={refreshing} onRefresh={() => load(true)} />}
@@ -283,7 +293,7 @@ export default function App() {
           <a href="https://portwatch.imf.org/" target="_blank" rel="noreferrer">IMF PortWatch</a> · Map © Esri · Shipments are simulated
         </span>
         <span>
-          Milestone 5 of 7 · <a href={SESSION_URL} target="_blank" rel="noreferrer">Request changes</a>
+          Milestone 6 of 7 · <a href={SESSION_URL} target="_blank" rel="noreferrer">Request changes</a>
         </span>
       </footer>
     </div>

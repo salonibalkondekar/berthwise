@@ -4,6 +4,7 @@ import { lateFee, recommend, rerouteOptions, type Recommendation } from '../lib/
 import type { Signals } from '../lib/signals';
 import { erpTotals, type ErpLink } from '../lib/erp';
 import { OrderRow } from './SapView';
+import type { DelayCost } from '../lib/money';
 import { d, LiveTag, SimTag, usd } from './ui';
 
 const todayFmt = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
@@ -21,12 +22,13 @@ interface Props {
   ranked: Shipment[];
   preds: Map<string, Prediction>;
   erp: Map<string, ErpLink> | null;
+  costs: Map<string, DelayCost> | null;
   loading: boolean;
   liveMissing: boolean;
   onSelect: (id: string) => void;
 }
 
-export function RiskBrief({ erp, ranked, all, signals, preds, loading, liveMissing, onSelect }: Props) {
+export function RiskBrief({ erp, costs, ranked, all, signals, preds, loading, liveMissing, onSelect }: Props) {
   if (loading) {
     return (
       <div className="brief">
@@ -38,8 +40,10 @@ export function RiskBrief({ erp, ranked, all, signals, preds, loading, liveMissi
   }
   const stockouts = ranked.filter((s) => preds.get(s.id)!.level === 'high');
   const atRisk = ranked.filter((s) => preds.get(s.id)!.level === 'medium');
-  const todo = todoList(all, preds, signals);
+  const todo = todoList(all, preds, signals, costs);
   const orders = erp ? erpTotals(erp) : null;
+  const costly = costs ? [...costs.values()].filter((c) => c.total > 0) : [];
+  const costTotal = costly.reduce((sum, c) => sum + c.total, 0);
 
   return (
     <div className="brief">
@@ -59,6 +63,11 @@ export function RiskBrief({ erp, ranked, all, signals, preds, loading, liveMissi
               .filter(Boolean)
               .join(' and ') + '. The rest look on track.'}
       </p>
+      {costTotal > 0 && (
+        <p className="small cost-line">
+          Delays are costing about <strong>{usd(costTotal)}</strong> across {costly.length} shipment{costly.length === 1 ? '' : 's'} in fees, speed-ups and lost sales <SimTag />
+        </p>
+      )}
       {liveMissing && <div className="error-box">Live weather and port data didn’t load, so these estimates leave them out.</div>}
 
       {todo.length > 0 && (
@@ -161,13 +170,13 @@ export function RiskBrief({ erp, ranked, all, signals, preds, loading, liveMissi
 
 const ORDER: Record<Recommendation['kind'], number> = { pickup: 0, reroute: 1, notify: 2, none: 3 };
 
-function todoList(all: Shipment[], preds: Map<string, Prediction>, signals: Signals | null) {
+function todoList(all: Shipment[], preds: Map<string, Prediction>, signals: Signals | null, costs: Map<string, DelayCost> | null) {
   return all
     .map((s) => {
       const p = preds.get(s.id) ?? null;
       const fee = lateFee(s, p);
       const opts = p && p.level !== 'arrived' ? rerouteOptions(s, p, signals) : [];
-      return { s, p, rec: recommend(s, p, opts, fee) };
+      return { s, p, rec: recommend(s, p, opts, fee, costs ? (costs.get(s.id)?.doNothing ?? 0) - (costs.get(s.id)?.fees ?? 0) : 0) };
     })
     .filter((x) => x.rec.kind !== 'none')
     .sort((a, b) => ORDER[a.rec.kind] - ORDER[b.rec.kind] || (b.p?.missChance ?? 0) - (a.p?.missChance ?? 0));

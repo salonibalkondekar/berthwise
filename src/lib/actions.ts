@@ -168,10 +168,13 @@ export interface Recommendation {
   headline: string;
   detail: string;
   option?: Option;
+  /** A fix that makes the date but costs more than the sales a late arrival would lose. */
+  declined?: Option;
   notify: boolean;
 }
 
-export function recommend(s: Shipment, p: Prediction | null, opts: Option[], fee: LateFee | null): Recommendation {
+/** `atStake`: sales a late arrival would lose (simulated). When a fix costs more than that, warning the customer wins. */
+export function recommend(s: Shipment, p: Prediction | null, opts: Option[], fee: LateFee | null, atStake = 0): Recommendation {
   if (fee && fee.arrived) {
     if (fee.level === 'over')
       return { kind: 'pickup', headline: 'Pick it up today', detail: `Free days ran out ${fmt(fee.lastFreeDay)}. Fees so far: ${usd(fee.accrued)}, rising ${usd(fee.nextDayCost)} a day.`, notify: false };
@@ -194,6 +197,17 @@ export function recommend(s: Shipment, p: Prediction | null, opts: Option[], fee
     };
   }
   const fixes = opts.filter((o) => o.id !== 'stay' && o.available && o.makesDate).sort((a, b) => a.extraCost - b.extraCost);
+  if (fixes[0] && atStake > 0 && fixes[0].extraCost > atStake) {
+    const o = fixes[0];
+    return {
+      kind: 'notify',
+      headline: `Tell ${customerFor(s).name} about the delay`,
+      detail: `${o.title} would make ${fmt(s.needBy)} but costs ${usd(o.extraCost)}, more than the ${usd(atStake)} in sales a short stock-out would lose.`,
+      option: o,
+      declined: o,
+      notify: true,
+    };
+  }
   if (fixes[0]) {
     const o = fixes[0];
     return {
