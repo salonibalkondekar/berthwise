@@ -9,7 +9,7 @@ import type { DelayCost } from '../lib/money';
 import { pct, RiskChip } from './RiskBrief';
 import { d, daysBetween, daysFromToday, LiveTag, relDays, SEA_SENTENCE, SeverityChip, SimTag, usd, weatherFor, weekday } from './ui';
 
-const STEPS: { stage: Stage; label: string }[] = [
+export const STEPS: { stage: Stage; label: string }[] = [
   { stage: 'booked', label: 'Booked' },
   { stage: 'at_origin', label: 'Origin port' },
   { stage: 'sailing', label: 'At sea' },
@@ -202,7 +202,7 @@ export function ShipmentDetail({ s, signals, pred, erp, cost, onBack, onPrev, on
 
 const days = (n: number) => `${Math.abs(n).toFixed(1)} day${Math.abs(n) === 1 ? '' : 's'}`;
 
-function PredictionCard({ s, p }: { s: Shipment; p: Prediction }) {
+export function PredictionCard({ s, p }: { s: Shipment; p: Prediction }) {
   const slack = p.slackDays;
   const total = p.factors.reduce((sum, f) => sum + f.days, 0);
   return (
