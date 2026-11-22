@@ -15,7 +15,7 @@ function gc(a, b, f) {
 
 const ORIGIN = [30.62, 122.07];
 const DEST = [33.72, -118.25];
-export const WAYPOINT_FRACTIONS = [0, 0.08, 0.18, 0.3, 0.42, 0.54, 0.66, 0.78, 0.88, 0.96, 1];
+export const WAYPOINT_FRACTIONS = [0, 0.12, 0.2, 0.3, 0.42, 0.54, 0.66, 0.78, 0.88, 0.96, 1];
 export const WAYPOINTS = WAYPOINT_FRACTIONS.map((f, i) => {
   const [lat, lon] = gc(ORIGIN, DEST, f);
   return { id: `wp${i}`, lat: +lat.toFixed(3), lon: +lon.toFixed(3) };
