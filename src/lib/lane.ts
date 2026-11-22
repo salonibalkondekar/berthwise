@@ -3,12 +3,14 @@ import { greatCirclePoint, type LatLon } from './geo';
 export const ORIGIN = {
   code: 'CNSHA',
   name: 'Shanghai (Yangshan)',
+  short: 'Shanghai',
   pos: [30.62, 122.07] as LatLon,
 };
 
 export const DESTINATION = {
   code: 'USLAX',
   name: 'Los Angeles / Long Beach',
+  short: 'Los Angeles',
   pos: [33.72, 241.75] as LatLon, // -118.25, unwrapped
 };
 
