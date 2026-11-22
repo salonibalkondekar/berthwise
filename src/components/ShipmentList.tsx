@@ -1,6 +1,7 @@
 import { STAGE_LABEL, type Shipment, type Stage } from '../lib/sim';
-import type { WeatherPoint } from '../lib/signals';
-import { d, daysFromToday, relDays, SeverityChip, weatherFor } from './ui';
+import type { Prediction } from '../lib/predict';
+import { RiskChip } from './RiskBrief';
+import { d, daysFromToday, relDays } from './ui';
 
 export type StageFilter = 'all' | Stage;
 
@@ -16,7 +17,7 @@ const FILTER_LABEL: Record<StageFilter, string> = {
 
 interface Props {
   shipments: Shipment[];
-  weather: WeatherPoint[] | null;
+  preds: Map<string, Prediction>;
   query: string;
   onQuery: (q: string) => void;
   filter: StageFilter;
@@ -33,7 +34,7 @@ function matches(s: Shipment, q: string) {
     .every((t) => hay.includes(t));
 }
 
-export function ShipmentList({ shipments, weather, query, onQuery, filter, onFilter, onSelect }: Props) {
+export function ShipmentList({ shipments, preds, query, onQuery, filter, onFilter, onSelect }: Props) {
   const counts = new Map<StageFilter, number>([['all', shipments.length]]);
   shipments.forEach((s) => counts.set(s.stage, (counts.get(s.stage) ?? 0) + 1));
 
@@ -89,7 +90,7 @@ export function ShipmentList({ shipments, weather, query, onQuery, filter, onFil
               {STAGE_LABEL[g.stage]} <span className="count">{g.items.length}</span>
             </h4>
             {g.items.map((s) => (
-              <ShipmentRow key={s.id} s={s} weather={weather} onSelect={onSelect} />
+              <ShipmentRow key={s.id} s={s} pred={preds.get(s.id)} onSelect={onSelect} />
             ))}
           </section>
         ))}
@@ -98,21 +99,20 @@ export function ShipmentList({ shipments, weather, query, onQuery, filter, onFil
   );
 }
 
-function ShipmentRow({ s, weather, onSelect }: { s: Shipment; weather: WeatherPoint[] | null; onSelect: (id: string) => void }) {
-  const wx = s.stage === 'sailing' ? weatherFor(s, weather) : null;
-  const eta = daysFromToday(s.carrierEta);
+function ShipmentRow({ s, pred, onSelect }: { s: Shipment; pred?: Prediction; onSelect: (id: string) => void }) {
+  const eta = daysFromToday(pred && s.stage !== 'at_terminal' ? pred.predictedArrival : s.carrierEta);
   return (
     <button className="ship-row" onClick={() => onSelect(s.id)}>
       <div className="row-top">
         <span className="row-title">{s.product}</span>
-        {wx && <SeverityChip sev={wx.sev} />}
+        {pred && pred.level !== 'arrived' && <RiskChip p={pred} />}
       </div>
       <div className="row-sub">
         <span className="mono">{s.container}</span> · {s.vessel}
       </div>
       <div className="row-meta">
         <span>
-          {s.stage === 'at_terminal' ? 'Arrived' : 'ETA'} <strong>{d(s.carrierEta)}</strong>
+          {s.stage === 'at_terminal' ? 'Arrived' : pred ? 'Expected' : 'ETA'} <strong>{d(pred && s.stage !== 'at_terminal' ? pred.predictedArrival : s.carrierEta)}</strong>
           {s.stage !== 'at_terminal' && <span className="muted"> ({relDays(eta)})</span>}
         </span>
         <span className="muted">Needed by {d(s.needBy)}</span>

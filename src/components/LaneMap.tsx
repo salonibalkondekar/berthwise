@@ -5,6 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import { greatCirclePath, type LatLon } from '../lib/geo';
 import { DESTINATION, ORIGIN, WAYPOINTS } from '../lib/lane';
 import { STAGE_LABEL, type Shipment } from '../lib/sim';
+import { RISK_LABEL, type Prediction } from '../lib/predict';
 import { fmt, seaSeverity, SEVERITY_LABEL, type WeatherPoint } from '../lib/signals';
 
 const LANE = greatCirclePath(ORIGIN.pos, DESTINATION.pos, 96);
@@ -13,10 +14,10 @@ const LANE_BOUNDS = L.latLngBounds([
   [52, 246],
 ]);
 
-const shipIcon = (selected: boolean, stage: Shipment['stage']) =>
+const shipIcon = (selected: boolean, stage: Shipment['stage'], risk: string) =>
   L.divIcon({
     className: '',
-    html: `<div class="ship-pin ${selected ? 'selected' : ''} pin-${stage}"><span>SIM</span></div>`,
+    html: `<div class="ship-pin ${selected ? 'selected' : ''} pin-${stage} pin-risk-${risk}"><span>SIM</span></div>`,
     iconSize: [34, 20],
     iconAnchor: [17, 10],
   });
@@ -24,6 +25,7 @@ const shipIcon = (selected: boolean, stage: Shipment['stage']) =>
 interface Props {
   shipments: Shipment[];
   weather: WeatherPoint[] | null;
+  preds: Map<string, Prediction>;
   selectedId: string | null;
   onSelect: (id: string) => void;
   resetKey: number;
@@ -40,7 +42,7 @@ function ViewController({ target, resetKey }: { target: LatLon | null; resetKey:
   return null;
 }
 
-export function LaneMap({ shipments, weather, selectedId, onSelect, resetKey }: Props) {
+export function LaneMap({ shipments, weather, preds, selectedId, onSelect, resetKey }: Props) {
   // Ships sitting at the same port are fanned out slightly so each pin stays clickable.
   const stacks = new Map<string, number>();
   const placed = shipments.map((s) => {
@@ -92,7 +94,7 @@ export function LaneMap({ shipments, weather, selectedId, onSelect, resetKey }: 
         <Marker
           key={s.id}
           position={pos}
-          icon={shipIcon(s.id === selectedId, s.stage)}
+          icon={shipIcon(s.id === selectedId, s.stage, preds.get(s.id)?.level ?? 'none')}
           zIndexOffset={s.id === selectedId ? 1000 : 0}
           keyboard
           title={`${s.product}, simulated shipment`}
@@ -103,6 +105,7 @@ export function LaneMap({ shipments, weather, selectedId, onSelect, resetKey }: 
               {s.product} <span className="tt-sim">SIM</span>
             </div>
             <span className="mono">{s.container}</span> · {STAGE_LABEL[s.stage]}
+            {preds.get(s.id) && preds.get(s.id)!.level !== 'arrived' && <div>{RISK_LABEL[preds.get(s.id)!.level]}</div>}
           </Tooltip>
         </Marker>
       ))}
