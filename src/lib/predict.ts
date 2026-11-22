@@ -45,7 +45,7 @@ export const CARRIER_HISTORY: Record<string, { avgLateDays: number; onTimePct: n
 const round1 = (x: number) => Math.round(x * 10) / 10;
 const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x));
 
-function normalCdf(z: number) {
+export function normalCdf(z: number) {
   // Abramowitz–Stegun approximation of the error function
   const t = 1 / (1 + 0.3275911 * (Math.abs(z) / Math.SQRT2));
   const y = 1 - ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-(z * z) / 2);

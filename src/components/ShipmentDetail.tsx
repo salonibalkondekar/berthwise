@@ -187,7 +187,7 @@ export function ShipmentDetail({ s, signals, pred, onBack, onPrev, onNext, posit
       )}
 
       <div className="next-up">
-        <strong>Coming in milestone 4:</strong> what-if scenarios for storms and port strikes, and a score of how accurate past estimates were.
+        <strong>Try a what-if:</strong> the What-if tab shows how a storm or port strike would change this estimate.
       </div>
     </div>
   );
