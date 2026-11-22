@@ -327,6 +327,12 @@ export default function App() {
               <div><span className="pin-mini pin-risk-medium">SIM</span> At risk</div>
               <div><span className="pin-mini">SIM</span> On track</div>
             </div>
+            {!!ais?.vessels.length && (
+              <div className="legend-group">
+                <div className="legend-title">Real ships <LiveTag /></div>
+                <div><span className="dot ais-dot" /> Cargo ship on AIS · {ais.vessels.length}</div>
+              </div>
+            )}
           </details>
         </div>)}
 

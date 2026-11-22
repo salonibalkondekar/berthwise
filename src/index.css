@@ -896,3 +896,5 @@ kbd { font: 600 11px/1.4 var(--mono); padding: 1px 6px; border: 1px solid var(--
 .real-table th, .real-table td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border); }
 .real-table th { color: var(--text-muted); font-weight: 600; }
 @media (max-width: 760px) { .acc-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.dot.ais-dot { background: #0f172a; border: 1px solid #fff; }
+:root[data-theme='dark'] .dot.ais-dot { background: #e2e8f0; border-color: #0f172a; }
