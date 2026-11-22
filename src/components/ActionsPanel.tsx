@@ -15,13 +15,13 @@ export function useActions(s: Shipment, pred: Prediction | null, signals: Signal
   }, [s, pred, signals, atStake]);
 }
 
-export function ActionsPanel({ s, pred, signals, cost }: { s: Shipment; pred: Prediction | null; signals: Signals | null; cost: DelayCost | null }) {
+export function ActionsPanel({ s, pred, signals, cost, hideRec = false }: { s: Shipment; pred: Prediction | null; signals: Signals | null; cost: DelayCost | null; hideRec?: boolean }) {
   const { fee, opts, rec } = useActions(s, pred, signals, cost ? cost.doNothing - cost.fees : 0);
   const showNote = !!pred && pred.level !== 'arrived' && pred.level !== 'low';
   return (
     <section className="actions">
-      <h3 className="section-title">What to do <SimTag /></h3>
-      <RecommendationBox rec={rec} />
+      {!hideRec && <h3 className="section-title">What to do <SimTag /></h3>}
+      {!hideRec && <RecommendationBox rec={rec} />}
       {cost && <CostCard c={cost} />}
       {fee && <LateFeeCard fee={fee} />}
       {opts.length > 0 && pred && pred.level !== 'low' && <RerouteTable s={s} opts={opts} rec={rec} />}
@@ -31,7 +31,7 @@ export function ActionsPanel({ s, pred, signals, cost }: { s: Shipment; pred: Pr
   );
 }
 
-function RecommendationBox({ rec }: { rec: Recommendation }) {
+export function RecommendationBox({ rec }: { rec: Recommendation }) {
   return (
     <div className={`rec rec-${rec.kind}`}>
       <div className="rec-label">Recommended</div>
