@@ -1,15 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LaneMap } from './components/LaneMap';
 import { ShipmentDetail } from './components/ShipmentDetail';
+import { RiskBrief } from './components/RiskBrief';
 import { ShipmentList, type StageFilter } from './components/ShipmentList';
 import { SignalsPanel } from './components/SignalsPanel';
 import { LiveTag, SimTag, timeAgo } from './components/ui';
 import { DESTINATION, ORIGIN, WAYPOINTS } from './lib/lane';
 import { generateShipments, IMPORTER, LANE_NM } from './lib/sim';
+import { predict, rankByRisk, type Prediction } from './lib/predict';
 import { fmt, type PortSignal, type Signals, type WeatherPoint } from './lib/signals';
 
 const SESSION_URL = 'https://app.devin.ai/sessions/a3eb9ff2b29a4b0e900ee8b290350bc3';
 const INTRO_KEY = 'berthwise:intro-dismissed';
+
+type Tab = 'today' | 'shipments' | 'signals';
 
 export default function App() {
   const shipments = useMemo(() => generateShipments(), []);
@@ -17,12 +21,22 @@ export default function App() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [tab, setTab] = useState<'shipments' | 'signals'>('shipments');
+  const [tab, setTab] = useState<Tab>('today');
+  const [backTab, setBackTab] = useState<Tab>('today');
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<StageFilter>('all');
   const [resetKey, setResetKey] = useState(0);
   const [showIntro, setShowIntro] = useState(() => localStorage.getItem(INTRO_KEY) !== '1');
   const panelRef = useRef<HTMLElement>(null);
+  const signalsSettled = !!signals || !!loadError;
+  const preds = useMemo(() => {
+    const m = new Map<string, Prediction>();
+    if (signalsSettled) shipments.forEach((s) => m.set(s.id, predict(s, signals)));
+    return m;
+  }, [shipments, signals, signalsSettled]);
+  const ranked = useMemo(() => (preds.size ? rankByRisk(shipments, preds) : []), [shipments, preds]);
+  const likelyLate = ranked.filter((s) => preds.get(s.id)?.level === 'high').length;
+  const atRisk = ranked.filter((s) => preds.get(s.id)?.level === 'medium').length;
 
   const load = useCallback((refresh = false) => {
     setLoadError(null);
@@ -37,7 +51,10 @@ export default function App() {
 
   const select = useCallback((id: string) => {
     setSelectedId(id);
-    setTab('shipments');
+    setTab((t) => {
+      if (t !== 'shipments') setBackTab(t);
+      return 'shipments';
+    });
     if (window.matchMedia('(max-width: 1100px)').matches) {
       requestAnimationFrame(() => panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
     }
@@ -45,7 +62,9 @@ export default function App() {
   const clearSelection = useCallback(() => {
     setSelectedId(null);
     setResetKey((k) => k + 1);
-  }, []);
+    setTab(backTab);
+    setBackTab('shipments');
+  }, [backTab]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -96,10 +115,10 @@ export default function App() {
       {showIntro ? (
         <section className="intro">
           <div className="intro-text">
-            <h1>Where your containers are, and the sea and port conditions around them</h1>
+            <h1>Which containers will be late, and why</h1>
             <p>
               Berthwise follows {shipments.length} containers for {IMPORTER.name}, a made-up importer, from {ORIGIN.short} to {DESTINATION.short}.
-              Pick a ship on the map or in the list to see where it is, when it’s due, and the sea conditions near it.
+              Each morning it ranks them by how likely they are to miss their needed-by date, says why, and flags stock-out risks. Pick a ship to see its estimate and the reasons behind it.
             </p>
             <div className="intro-key">
               <span><SimTag /> Shipments, vessels and the importer are invented.</span>
@@ -127,7 +146,15 @@ export default function App() {
         <div className="kpi">
           <div className="kpi-label">Containers tracked <SimTag /></div>
           <div className="kpi-value">{shipments.length}</div>
-          <div className="kpi-foot">{atSea} at sea · {waiting} waiting to berth</div>
+          <div className="kpi-foot">
+            {preds.size ? (
+              <>
+                <span className="risk-text-high">{likelyLate} likely late</span> · <span className="risk-text-medium">{atRisk} at risk</span> · {atSea} at sea
+              </>
+            ) : (
+              `${atSea} at sea · ${waiting} waiting to berth`
+            )}
+          </div>
         </div>
         <div className="kpi">
           <div className="kpi-label">Highest waves on the lane <LiveTag /></div>
@@ -148,7 +175,7 @@ export default function App() {
 
       <main className="main">
         <div className="map-wrap">
-          <LaneMap shipments={shipments} weather={signals?.weather ?? null} selectedId={selectedId} onSelect={select} resetKey={resetKey} />
+          <LaneMap shipments={shipments} weather={signals?.weather ?? null} preds={preds} selectedId={selectedId} onSelect={select} resetKey={resetKey} />
           <button className="map-reset" onClick={() => setResetKey((k) => k + 1)}>Show whole lane</button>
           <details className="legend" open>
             <summary>Map key</summary>
@@ -162,13 +189,18 @@ export default function App() {
             </div>
             <div className="legend-group">
               <div className="legend-title">Shipments <SimTag /></div>
-              <div><span className="pin-mini">SIM</span> Click to open</div>
+              <div><span className="pin-mini pin-risk-high">SIM</span> Likely late</div>
+              <div><span className="pin-mini pin-risk-medium">SIM</span> At risk</div>
+              <div><span className="pin-mini">SIM</span> On track</div>
             </div>
           </details>
         </div>
 
         <aside className="panel" ref={panelRef}>
           <div className="tabs" role="tablist">
+            <button role="tab" aria-selected={tab === 'today'} onClick={() => { setSelectedId(null); setTab('today'); }}>
+              Today {likelyLate > 0 && <span className="count count-alert">{likelyLate}</span>}
+            </button>
             <button role="tab" aria-selected={tab === 'shipments'} onClick={() => setTab('shipments')}>
               Shipments <span className="count">{shipments.length}</span>
             </button>
@@ -177,10 +209,13 @@ export default function App() {
             </button>
           </div>
 
+          {tab === 'today' && (
+            <RiskBrief ranked={ranked} preds={preds} loading={!signalsSettled} liveMissing={!signals && !!loadError} onSelect={select} />
+          )}
           {tab === 'shipments' && !selected && (
             <ShipmentList
               shipments={shipments}
-              weather={signals?.weather ?? null}
+              preds={preds}
               query={query}
               onQuery={setQuery}
               filter={filter}
@@ -192,6 +227,7 @@ export default function App() {
             <ShipmentDetail
               s={selected}
               signals={signals}
+              pred={preds.get(selected.id) ?? null}
               onBack={clearSelection}
               onPrev={() => step(-1)}
               onNext={() => step(1)}
@@ -208,7 +244,7 @@ export default function App() {
           <a href="https://portwatch.imf.org/" target="_blank" rel="noreferrer">IMF PortWatch</a> · Map © Esri · Shipments are simulated
         </span>
         <span>
-          Milestone 1 of 4 · <a href={SESSION_URL} target="_blank" rel="noreferrer">Request changes</a>
+          Milestone 2 of 4 · <a href={SESSION_URL} target="_blank" rel="noreferrer">Request changes</a>
         </span>
       </footer>
     </div>
