@@ -832,4 +832,6 @@ kbd { font: 600 11px/1.4 var(--mono); padding: 1px 6px; border: 1px solid var(--
 .case-toolbar .link-btn { white-space: nowrap; }
 .case-toolbar .pager { white-space: nowrap; }
 .case-grid-low > .case-card:last-child > :first-child { margin-top: 0; }
-@media (max-width: 760px) { .track-now { display: none; } .track-fill { min-width: 60%; } }
+.track-fill { max-width: calc(100% - 76px); }
+.track-rest { flex: 1 0 76px; }
+@media (max-width: 760px) { .track-now { display: none; } .track-fill { min-width: 62%; overflow: hidden; } .track-rest { padding: 0 10px; } }
