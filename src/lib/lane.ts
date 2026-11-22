@@ -17,14 +17,24 @@ export const ANCHORAGE: LatLon = [33.62, 241.9];
 /** Fractions along the lane where live weather is sampled. */
 export const WAYPOINT_FRACTIONS = [0, 0.12, 0.2, 0.3, 0.42, 0.54, 0.66, 0.78, 0.88, 0.96, 1];
 
+/** Rough sea area for each sampled point, in WAYPOINT_FRACTIONS order. */
+const WAYPOINT_NAMES = [
+  'Yangshan approach',
+  'Sea of Japan',
+  'Tsugaru Strait',
+  'Off the Kuril Islands',
+  'Northwest Pacific',
+  'South of the Aleutians',
+  'North Pacific',
+  'Northeast Pacific',
+  'Off Northern California',
+  'Off Central California',
+  'San Pedro Bay',
+];
+
 export const WAYPOINTS = WAYPOINT_FRACTIONS.map((f, i) => ({
   id: `wp${i}`,
   fraction: f,
   pos: greatCirclePoint(ORIGIN.pos, DESTINATION.pos, f),
-  name:
-    f === 0
-      ? 'Yangshan approach'
-      : f === 1
-        ? 'San Pedro Bay'
-        : `Mid-Pacific ${Math.round(f * 100)}%`,
+  name: WAYPOINT_NAMES[i],
 }));

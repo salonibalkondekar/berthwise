@@ -40,8 +40,8 @@ export interface Signals {
 export type Severity = 'calm' | 'moderate' | 'rough' | 'severe' | 'unknown';
 
 export function seaSeverity(waveM: number | null | undefined, windKn?: number | null): Severity {
-  if (waveM == null && windKn == null) return 'unknown';
-  const w = waveM ?? 0;
+  if (waveM == null) return 'unknown';
+  const w = waveM;
   const k = windKn ?? 0;
   if (w >= 6 || k >= 40) return 'severe';
   if (w >= 4 || k >= 30) return 'rough';
@@ -54,7 +54,7 @@ export const SEVERITY_LABEL: Record<Severity, string> = {
   moderate: 'Moderate',
   rough: 'Rough',
   severe: 'Severe',
-  unknown: 'No reading',
+  unknown: 'No wave data',
 };
 
 export const fmt = (n: number | null | undefined, digits = 1, unit = '') =>
