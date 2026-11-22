@@ -147,7 +147,7 @@ export function generateShipments(now = new Date()): Shipment[] {
       id: `SHP-${String(1040 + i)}`,
       container: containerNumber(r),
       containerType: (['20GP', '40GP', '40HC'] as const)[i % 3 === 0 ? 0 : r() > 0.4 ? 2 : 1],
-      po: `PO-${24000 + Math.floor(r() * 900)}`,
+      po: `45000${24000 + Math.floor(r() * 900)}`,
       product,
       units,
       cargoValueUsd: Math.round((units * valuePerUnit) / 100) * 100,
