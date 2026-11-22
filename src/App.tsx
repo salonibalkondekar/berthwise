@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { CommandPalette, NavIcon, type PageItem } from './components/CommandPalette';
 import { LaneMap } from './components/LaneMap';
 import { ShipmentDetail } from './components/ShipmentDetail';
 import { Accuracy } from './components/Accuracy';
@@ -26,6 +27,19 @@ const INTRO_KEY = 'berthwise:intro-dismissed';
 
 type Tab = 'today' | 'shipments' | 'sap' | 'plan' | 'whatif' | 'accuracy' | 'signals' | 'data';
 const IMPORT_KEY = 'bw-import-csv';
+const THEME_KEY = 'bw-theme';
+const MAP_TABS: Tab[] = ['today', 'shipments', 'whatif', 'signals'];
+
+const NAV: (PageItem<Tab> & { group: string })[] = [
+  { id: 'today', group: 'Operate', label: 'Today', hint: 'Morning risk list and what to do', icon: 'M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4M10 6.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z' },
+  { id: 'shipments', group: 'Operate', label: 'Shipments', hint: 'Every container, by stage', icon: 'M3 6.2 10 3l7 3.2v7.6L10 17l-7-3.2V6.2zM3 6.2 10 9.4l7-3.2M10 9.4V17' },
+  { id: 'whatif', group: 'Operate', label: 'What-if', hint: 'Storms and port strikes', icon: 'M11 2.5 4.5 11H9l-1 6.5L15.5 9H11l1-6.5z' },
+  { id: 'sap', group: 'Plan', label: 'SAP view', hint: 'POs, plant stock, sales orders', icon: 'M4 5c0-1.1 2.7-2 6-2s6 .9 6 2-2.7 2-6 2-6-.9-6-2zM4 5v10c0 1.1 2.7 2 6 2s6-.9 6-2V5M4 10c0 1.1 2.7 2 6 2s6-.9 6-2' },
+  { id: 'plan', group: 'Plan', label: 'Planning', hint: 'Cost of delay, reorders, carriers', icon: 'M3 17h14M6 14V9.5M10 14V5M14 14v-3.5' },
+  { id: 'data', group: 'Plan', label: 'Import · Export', hint: 'CSV in and out, email digest', icon: 'M6.5 3v11M3.5 11l3 3 3-3M13.5 17V6M10.5 9l3-3 3 3' },
+  { id: 'accuracy', group: 'Insight', label: 'Accuracy', hint: 'Estimates vs actual arrivals', icon: 'M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM10 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM10 10h.01' },
+  { id: 'signals', group: 'Insight', label: 'Lane signals', hint: 'Live weather and port traffic', icon: 'M2.5 12.5c2-2.7 3.8-2.7 5.5 0s3.8 2.7 5.5 0 3-2.7 4-2M2.5 7.5c2-2.7 3.8-2.7 5.5 0s3.8 2.7 5.5 0 3-2.7 4-2' },
+];
 
 export default function App() {
   const demo = useMemo(() => generateShipments(), []);
@@ -46,8 +60,26 @@ export default function App() {
   const [resetKey, setResetKey] = useState(0);
   const [showIntro, setShowIntro] = useState(() => localStorage.getItem(INTRO_KEY) !== '1');
   const panelRef = useRef<HTMLElement>(null);
-  const tabsRef = useRef<HTMLDivElement>(null);
-  const [indicator, setIndicator] = useState<{ x: number; w: number } | null>(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const t = localStorage.getItem(THEME_KEY);
+    return t === 'dark' || t === 'light' ? t : window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem(THEME_KEY, theme);
+  }, [theme]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const typing = e.target instanceof HTMLElement && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName);
+      if ((e.key === 'k' && (e.metaKey || e.ctrlKey)) || (e.key === '/' && !typing)) {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
   const signalsSettled = !!signals || !!loadError;
   const preds = useMemo(() => {
     const m = new Map<string, Prediction>();
@@ -119,27 +151,38 @@ export default function App() {
     null,
   );
 
-  useLayoutEffect(() => {
-    const measure = () => {
-      const el = tabsRef.current?.querySelector<HTMLButtonElement>('[aria-selected="true"]');
-      if (el) setIndicator({ x: el.offsetLeft, w: el.offsetWidth });
-    };
-    measure();
-    window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
-  }, [tab, likelyLate]);
+
+  const page = NAV.find((n) => n.id === tab)!;
+  const mapTab = MAP_TABS.includes(tab);
+  const go = (t: Tab) => {
+    if (t !== 'shipments') setSelectedId(null);
+    setTab(t);
+  };
 
   return (
-    <div className="app">
-      <header className="topbar">
-        <div className="brand">
+    <div className="shell">
+      <nav className="sidenav" aria-label="Sections">
+        <div className="nav-brand">
           <img src="/icon.svg" alt="" width={30} height={30} />
           <div>
             <div className="brand-name">Berthwise</div>
             <div className="brand-sub">Ocean shipment risk, explained</div>
           </div>
         </div>
-        <div className="topbar-right">
+        {['Operate', 'Plan', 'Insight'].map((g) => (
+          <div className="nav-group" key={g}>
+            <div className="nav-group-title">{g}</div>
+            {NAV.filter((n) => n.group === g).map((n) => (
+              <button key={n.id} className="nav-item" aria-current={tab === n.id ? 'page' : undefined} onClick={() => go(n.id)} title={n.hint}>
+                <NavIcon d={n.icon} />
+                <span className="nav-label">{n.label}</span>
+                {n.id === 'today' && likelyLate > 0 && <span className="count count-alert">{likelyLate}</span>}
+                {n.id === 'shipments' && <span className="count">{shipments.length}</span>}
+              </button>
+            ))}
+          </div>
+        ))}
+        <div className="nav-foot">
           <div className="lane-pill" title={`About ${Math.round(LANE_NM).toLocaleString()} nautical miles`}>
             {ORIGIN.short} <span aria-hidden>→</span> {DESTINATION.short}
             <span className="lane-nm"> · {Math.round(LANE_NM).toLocaleString()} nm</span>
@@ -148,6 +191,23 @@ export default function App() {
             <span className="status-dot" />
             {signals ? `Live data ${timeAgo(signals.fetchedAt)}` : loadError ? 'Live data unavailable' : 'Loading live data…'}
           </div>
+        </div>
+      </nav>
+    <div className="app">
+      <header className="topbar">
+        <div>
+          <h1 className="page-title">{page.label}</h1>
+          <div className="brand-sub">{page.hint}</div>
+        </div>
+        <div className="topbar-right">
+          <button className="search-btn" onClick={() => setPaletteOpen(true)} aria-label="Search">
+            <NavIcon d="M8.5 3.5a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM12.2 12.2L16.5 16.5" size={16} />
+            <span className="search-label">Search shipments and pages</span>
+            <kbd>Ctrl K</kbd>
+          </button>
+          <button className="theme-btn" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} title={theme === 'dark' ? 'Light mode' : 'Dark mode'}>
+            <NavIcon size={17} d={theme === 'dark' ? 'M10 3v1.5M10 15.5V17M3 10h1.5M15.5 10H17M5 5l1 1M14 14l1 1M5 15l1-1M14 6l1-1M10 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6z' : 'M15.5 12.5A6.5 6.5 0 0 1 7.5 4.5a6.5 6.5 0 1 0 8 8z'} />
+          </button>
         </div>
       </header>
 
@@ -212,8 +272,8 @@ export default function App() {
         <PortKpi port={signals?.ports.destination ?? null} loading={!signals && !loadError} label={`${DESTINATION.short} port traffic`} />
       </section>
 
-      <main className="main">
-        <div className="map-wrap">
+      <main className={`main ${mapTab ? '' : 'main-wide'}`}>
+        {mapTab && (<div className="map-wrap">
           <LaneMap shipments={shipments} weather={signals?.weather ?? null} preds={mapPreds} selectedId={selectedId} onSelect={select} resetKey={resetKey} highlight={tab === 'whatif' ? scenarioRange(scenario) : null} />
           <button className="map-reset" onClick={() => setResetKey((k) => k + 1)}>Show whole lane</button>
           <details className="legend" open>
@@ -233,37 +293,9 @@ export default function App() {
               <div><span className="pin-mini">SIM</span> On track</div>
             </div>
           </details>
-        </div>
+        </div>)}
 
         <aside className="panel" ref={panelRef}>
-          <div className="tabs" role="tablist" ref={tabsRef}>
-            {indicator && <span className="tab-indicator" style={{ transform: `translateX(${indicator.x}px)`, width: indicator.w }} />}
-            <button role="tab" aria-selected={tab === 'today'} onClick={() => { setSelectedId(null); setTab('today'); }}>
-              Today {likelyLate > 0 && <span className="count count-alert">{likelyLate}</span>}
-            </button>
-            <button role="tab" aria-selected={tab === 'shipments'} onClick={() => setTab('shipments')}>
-              Shipments <span className="count">{shipments.length}</span>
-            </button>
-            <button role="tab" aria-selected={tab === 'sap'} onClick={() => { setSelectedId(null); setTab('sap'); }}>
-              SAP
-            </button>
-            <button role="tab" aria-selected={tab === 'plan'} onClick={() => { setSelectedId(null); setTab('plan'); }}>
-              Planning
-            </button>
-            <button role="tab" aria-selected={tab === 'whatif'} onClick={() => { setSelectedId(null); setTab('whatif'); }}>
-              What-if
-            </button>
-            <button role="tab" aria-selected={tab === 'accuracy'} onClick={() => { setSelectedId(null); setTab('accuracy'); }}>
-              Accuracy
-            </button>
-            <button role="tab" aria-selected={tab === 'signals'} onClick={() => setTab('signals')}>
-              Signals
-            </button>
-            <button role="tab" aria-selected={tab === 'data'} onClick={() => { setSelectedId(null); setTab('data'); }}>
-              Import · Export
-            </button>
-          </div>
-
           <div className="pane" key={tab === 'shipments' ? `shipments-${selected ? 'detail' : 'list'}` : tab}>
           {tab === 'today' && (
             <RiskBrief erp={erp} costs={costs} ranked={ranked} all={shipments} signals={signals} preds={preds} loading={!signalsSettled} liveMissing={!signals && !!loadError} onSelect={select} />
@@ -322,9 +354,20 @@ export default function App() {
           <a href="https://portwatch.imf.org/" target="_blank" rel="noreferrer">IMF PortWatch</a> · Map © Esri · {imported ? 'Shipments from your file' : 'Shipments are simulated'}
         </span>
         <span>
-          Milestone 7 of 7 · <a href={SESSION_URL} target="_blank" rel="noreferrer">Request changes</a>
+          <a href={SESSION_URL} target="_blank" rel="noreferrer">Request changes</a>
         </span>
       </footer>
+    </div>
+      {paletteOpen && (
+        <CommandPalette
+          pages={NAV}
+          shipments={shipments}
+          preds={preds}
+          onPage={go}
+          onShipment={select}
+          onClose={() => setPaletteOpen(false)}
+        />
+      )}
     </div>
   );
 }
